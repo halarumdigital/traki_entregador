@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "250651795596",
+    "project_id": "fretus",
+    "storage_bucket": "fretus.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:250651795596:android:10faa178ce84ef42bc5ba9",
+        "android_client_info": {
+          "package_name": "com.fretus.driver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZn1Ke40Qw-ASOP3KG0WuAURgfCmNyfko"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

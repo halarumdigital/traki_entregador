@@ -1,0 +1,220 @@
+// import 'package:device_apps/device_apps.dart';
+import 'package:android_intent_plus/android_intent.dart';
+// import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
+// import 'package:installed_apps/installed_apps.dart';
+import 'package:quick_nav/quick_nav.dart';
+import 'package:workmanager/workmanager.dart';
+import 'functions/functions.dart';
+import 'functions/notifications.dart';
+import 'pages/loadingPage/loadingpage.dart';
+import 'pages/splash_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+// import 'package:bubble_head/bubble.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'services/notification_service.dart';
+import 'utils/notification_handler.dart';
+import 'dart:io';
+
+// Variável global para armazenar notificação pendente
+Map<String, dynamic>? pendingNotificationData;
+
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Handler original para meta-request
+  if (message.data['push_type'].toString() == 'meta-request') {
+    AndroidIntent intent = AndroidIntent(
+      action: 'action_view',
+      package: 'com.fretus.driver',
+      componentName:
+          'com.fretus.driver.MainActivity',
+    );
+    await intent.launch();
+  }
+
+  // Log para outras notificações
+  debugPrint('📩 Notificação em background: ${message.data}');
+}
+
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    try {
+      await Firebase.initializeApp();
+      var position = await Geolocator.getCurrentPosition();
+
+      // Enviar localização para o backend usando Bearer token
+      await updateDriverLocation(position.latitude, position.longitude);
+
+    } catch (e) {
+      debugPrint('❌ Erro ao atualizar localização em background: $e');
+    }
+
+    return Future.value(true);
+  });
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setPreferredOrientations(
+      [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+
+  await Firebase.initializeApp();
+
+  // Inicializar serviço de notificações
+  await NotificationService.initialize(
+    onNotificationTap: (data) {
+      // Armazenar notificação para processar depois que o app estiver pronto
+      pendingNotificationData = data;
+      debugPrint('🔔 Notificação pendente armazenada: $data');
+    },
+  );
+
+  initMessaging();
+  checkInternetConnection();
+
+  currentPositionUpdate();
+
+  Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  runApp(const MyApp());
+}
+
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  // final platforms = const MethodChannel('flutter.app/awake');
+  // This widget is the root of your application.
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  void initState() {
+    WidgetsBinding.instance.addObserver(this);
+    Workmanager().cancelAll();
+    if (Platform.isAndroid) {
+      test();
+    }
+
+    // Processar notificação pendente após o primeiro frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (pendingNotificationData != null) {
+        final context = navigatorKey.currentContext;
+        if (context != null) {
+          debugPrint('🔔 Processando notificação pendente');
+          NotificationHandler.handleNotification(context, pendingNotificationData!);
+          pendingNotificationData = null;
+        }
+      }
+    });
+
+    super.initState();
+  }
+
+  // final Bubble _bubble =
+  //     Bubble(showCloseButton: false, allowDragToClose: false);
+  Future<void> startBubbleHead() async {
+    try {
+      // await _bubble.startBubbleHead(sendAppToBackground: false);
+      bool? hasPermission = await QuickNav.I.checkPermission();
+      if (hasPermission == false) {
+        hasPermission = await QuickNav.I.askPermission();
+      }
+      if (hasPermission == true) {
+        await QuickNav.I.startService();
+      } else {
+        debugPrint("Overlay permission not granted");
+      }
+    } on PlatformException {
+      debugPrint('Failed to call startBubbleHead');
+    }
+  }
+
+  Future<void> stopBubbleHead() async {
+    try {
+      // await _bubble.stopBubbleHead();
+      await QuickNav.I.stopService();
+    } on PlatformException {
+      debugPrint('Failed to call stopBubbleHead');
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    if (state == AppLifecycleState.paused) {
+      if (Platform.isAndroid &&
+          userDetails.isNotEmpty &&
+          userDetails['role'] == 'driver' &&
+          userDetails['active'] == true) {
+        updateLocation(10);
+        test();
+        if (await QuickNav.I.checkPermission() == true) {
+          startBubbleHead();
+        }
+      } else {}
+    }
+    if (Platform.isAndroid && state == AppLifecycleState.resumed) {
+      stopBubbleHead();
+      Workmanager().cancelAll();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    platform = Theme.of(context).platform;
+
+    return GestureDetector(
+        onTap: () {
+          //remove keyboard on touching anywhere on the screen.
+          FocusScopeNode currentFocus = FocusScope.of(context);
+
+          if (!currentFocus.hasPrimaryFocus) {
+            currentFocus.unfocus();
+            FocusManager.instance.primaryFocus?.unfocus();
+          }
+        },
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          debugShowCheckedModeBanner: false,
+          title: 'product name',
+          theme: ThemeData(),
+          home: const SplashScreen(),
+          builder: (context, child) {
+            return MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: const TextScaler.linear(1.0)),
+              child: child!,
+            );
+          },
+        ));
+  }
+}
+
+void updateLocation(duration) {
+  for (var i = 0; i < 15; i++) {
+    Workmanager().registerPeriodicTask('locs_$i', 'update_locs_$i',
+        initialDelay: Duration(minutes: i),
+        frequency: const Duration(minutes: 15),
+        constraints: Constraints(
+            networkType: NetworkType.connected,
+            requiresBatteryNotLow: false,
+            requiresCharging: false,
+            requiresDeviceIdle: false,
+            requiresStorageNotLow: false),
+        inputData: {'id': userDetails['id'].toString()});
+  }
+}
+
+test() {
+  QuickNav.I.initService(
+      chatHeadIcon: '@drawable/logo',
+      notificationIcon: "@drawable/logo",
+      notificationCircleHexColor: 0xFFA432A7,
+      screenHeight: 100);
+}

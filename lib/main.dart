@@ -21,6 +21,9 @@ import 'dart:io';
 // Variável global para armazenar notificação pendente
 Map<String, dynamic>? pendingNotificationData;
 
+// GlobalKey para acessar navigator de qualquer lugar
+final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
+
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Handler original para meta-request
@@ -70,6 +73,19 @@ void main() async {
       pendingNotificationData = data;
       debugPrint('🔔 Notificação pendente armazenada: $data');
     },
+    onMessageReceived: (data) {
+      // Processar notificação recebida em foreground IMEDIATAMENTE
+      debugPrint('📨 Mensagem recebida em foreground: $data');
+
+      final context = globalNavigatorKey.currentContext;
+      if (context != null) {
+        debugPrint('🎯 Processando notificação imediatamente com context disponível');
+        NotificationHandler.handleNotification(context, data);
+      } else {
+        debugPrint('⚠️ Context não disponível, armazenando para processar depois');
+        pendingNotificationData = data;
+      }
+    },
   );
 
   initMessaging();
@@ -92,7 +108,6 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   // final platforms = const MethodChannel('flutter.app/awake');
   // This widget is the root of your application.
-  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
@@ -105,7 +120,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     // Processar notificação pendente após o primeiro frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (pendingNotificationData != null) {
-        final context = navigatorKey.currentContext;
+        final context = globalNavigatorKey.currentContext;
         if (context != null) {
           debugPrint('🔔 Processando notificação pendente');
           NotificationHandler.handleNotification(context, pendingNotificationData!);
@@ -180,7 +195,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           }
         },
         child: MaterialApp(
-          navigatorKey: navigatorKey,
+          navigatorKey: globalNavigatorKey,
           debugShowCheckedModeBanner: false,
           title: 'product name',
           theme: ThemeData(),

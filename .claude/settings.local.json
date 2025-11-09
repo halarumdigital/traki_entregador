@@ -1,22 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(java -version:*)",
-      "Bash(where:*)",
-      "Bash(dir:*)",
-      "Bash(flutter pub get:*)",
-      "Bash(flutter clean:*)",
-      "Bash(flutter build:*)",
-      "Bash(flutter run)",
-      "Bash(nc localhost 50543)",
       "Bash(flutter run:*)",
-      "Bash(timeout 2 cat:*)",
       "Bash(nc:*)",
-      "Bash(/tmp/flutter_cmd_77b56e.txt)",
-      "Bash(/tmp/flutter_cmd_a76204.txt)",
-      "Bash(/tmp/flutter_cmd_5942e8.txt)",
-      "Bash(r)",
-      "Bash(/tmp/flutter_cmd_7d7f68.txt)"
+      "Bash(flutter clean:*)",
+      "Bash(printf:*)",
+      "Bash(timeout 5 nc:*)",
+      "Bash(/tmp/flutter_reload_trigger:*)",
+      "Bash(taskkill:*)",
+      "Bash(timeout 5 echo:*)",
+      "Bash(timeout 10 echo:*)",
+      "Bash(timeout 15 echo:*)",
+      "Bash(timeout 20 echo:*)"
     ],
     "deny": [],
     "ask": []

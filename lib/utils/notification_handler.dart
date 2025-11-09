@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_driver/pages/login/approval_status_screen.dart';
 import 'package:flutter_driver/pages/login/login.dart';
 import 'package:flutter_driver/styles/styles.dart';
+import 'package:flutter_driver/widgets/delivery_request_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class NotificationHandler {
+  // Flag para garantir que apenas um modal de entrega esteja aberto por vez
+  static bool _isDeliveryDialogOpen = false;
+
   static void handleNotification(
     BuildContext context,
     Map<String, dynamic> data,
@@ -29,6 +33,16 @@ class NotificationHandler {
 
       case 'document_rejected':
         _handleDocumentRejected(context, data);
+        break;
+
+      case 'new_delivery':
+      case 'new_delivery_request':
+        _handleNewDeliveryRequest(context, data);
+        break;
+
+      case 'DELIVERY_CANCELLED':
+      case 'delivery_cancelled':
+        _handleDeliveryCancelled(context, data);
         break;
 
       default:
@@ -269,6 +283,125 @@ class NotificationHandler {
             child: Text(
               'Ver Status',
               style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Nova solicitação de entrega → Mostrar modal
+  static void _handleNewDeliveryRequest(
+    BuildContext context,
+    Map<String, dynamic> data,
+  ) {
+    // Verificar se já existe um modal aberto
+    if (_isDeliveryDialogOpen) {
+      debugPrint('⚠️ Modal de entrega já está aberto. Ignorando nova solicitação.');
+      return;
+    }
+
+    debugPrint('🚚 Mostrando modal de nova solicitação de entrega');
+    _isDeliveryDialogOpen = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => DeliveryRequestDialog(data: data),
+    ).then((_) {
+      // Quando o modal fechar, marcar como disponível
+      _isDeliveryDialogOpen = false;
+      debugPrint('✅ Modal de entrega fechado');
+    });
+  }
+
+  // Entrega cancelada pelo administrador → Voltar para home
+  static void _handleDeliveryCancelled(
+    BuildContext context,
+    Map<String, dynamic> data,
+  ) {
+    debugPrint('🚫 Entrega cancelada pelo administrador');
+
+    final requestId = data['requestId'] as String?;
+    final message = data['message'] as String? ?? 'A entrega foi cancelada pelo administrador.';
+
+    // Mostrar alerta ao motorista
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.cancel, color: Colors.red, size: 32),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Entrega Cancelada',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              message,
+              style: TextStyle(fontSize: 16),
+            ),
+            if (requestId != null) ...[
+              SizedBox(height: 12),
+              Text(
+                'ID da Entrega: $requestId',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+            ],
+            SizedBox(height: 16),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Você está disponível para aceitar novas entregas.',
+                      style: TextStyle(fontSize: 14, color: Colors.blue[900]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: buttonColor,
+                padding: EdgeInsets.symmetric(vertical: 16),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+
+                // Voltar para a tela inicial (Home)
+                // Remove todas as rotas até a home
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              },
+              child: Text(
+                'Entendi',
+                style: TextStyle(fontSize: 16, color: Colors.white),
+              ),
             ),
           ),
         ],

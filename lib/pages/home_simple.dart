@@ -7,6 +7,9 @@ import '../widgets/online_offline_toggle.dart';
 import '../styles/styles.dart';
 import '../functions/functions.dart';
 import '../services/local_storage_service.dart';
+import '../services/delivery_service.dart';
+import 'driver_profile_screen.dart';
+import 'active_delivery_screen.dart';
 
 class HomeSimple extends StatefulWidget {
   const HomeSimple({Key? key}) : super(key: key);
@@ -19,11 +22,14 @@ class _HomeSimpleState extends State<HomeSimple> {
   Map<String, dynamic>? _driverProfile;
   bool _isLoadingProfile = false;
   Timer? _locationTimer;
+  Map<String, dynamic>? _currentDelivery;
+  bool _isLoadingDelivery = false;
 
   @override
   void initState() {
     super.initState();
     _loadDriverProfile();
+    _loadCurrentDelivery();
     _startLocationUpdates();
   }
 
@@ -105,6 +111,38 @@ class _HomeSimpleState extends State<HomeSimple> {
     }
   }
 
+  Future<void> _loadCurrentDelivery() async {
+    setState(() {
+      _isLoadingDelivery = true;
+    });
+
+    try {
+      debugPrint('📦 Buscando entrega em andamento...');
+      final delivery = await DeliveryService.getCurrentDelivery();
+
+      if (mounted) {
+        setState(() {
+          _currentDelivery = delivery;
+        });
+
+        // Apenas mostrar log, não navegar automaticamente
+        if (delivery != null) {
+          debugPrint('✅ Entrega em andamento encontrada');
+        } else {
+          debugPrint('ℹ️ Nenhuma entrega em andamento');
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao buscar entrega em andamento: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingDelivery = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     var media = MediaQuery.of(context).size;
@@ -112,10 +150,11 @@ class _HomeSimpleState extends State<HomeSimple> {
     return Scaffold(
       backgroundColor: page,
       appBar: AppBar(
-        backgroundColor: topBar,
+        backgroundColor: buttonColor,
         title: const Text('Home', style: TextStyle(color: Colors.white)),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 2,
       ),
       drawer: Drawer(
         child: Container(
@@ -385,8 +424,7 @@ class _HomeSimpleState extends State<HomeSimple> {
                           ),
                           const SizedBox(height: 5),
                           Text(
-                            _driverProfile!['rating']?['average']?.toString() ??
-                                '0.0',
+                            _driverProfile!['rating']?.toString() ?? '0.0',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -411,8 +449,7 @@ class _HomeSimpleState extends State<HomeSimple> {
                           ),
                           const SizedBox(height: 5),
                           Text(
-                            _driverProfile!['rating']?['count']?.toString() ??
-                                '0',
+                            _driverProfile!['noOfRatings']?.toString() ?? '0',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -431,24 +468,88 @@ class _HomeSimpleState extends State<HomeSimple> {
                     ],
                   ),
                 ),
-              const Spacer(),
-              // Botão de recarregar perfil
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: ElevatedButton.icon(
-                  onPressed: _loadDriverProfile,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Atualizar Perfil'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: buttonColor,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
+              const SizedBox(height: 20),
+              // Itens do menu
+              ListTile(
+                leading: Icon(Icons.person, color: buttonColor),
+                title: Text(
+                  'Meu Perfil',
+                  style: TextStyle(color: textColor, fontSize: 16),
                 ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DriverProfileScreen(),
+                    ),
+                  );
+                },
               ),
+              Divider(height: 1, color: borderLines),
+              ListTile(
+                leading: Icon(Icons.local_shipping, color: buttonColor),
+                title: Text(
+                  'Minhas Viagens',
+                  style: TextStyle(color: textColor, fontSize: 16),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  // TODO: Navegar para tela de viagens
+                },
+              ),
+              Divider(height: 1, color: borderLines),
+              ListTile(
+                leading: Icon(Icons.history, color: buttonColor),
+                title: Text(
+                  'Histórico',
+                  style: TextStyle(color: textColor, fontSize: 16),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  // TODO: Navegar para tela de histórico
+                },
+              ),
+              Divider(height: 1, color: borderLines),
+              ListTile(
+                leading: Icon(Icons.settings, color: buttonColor),
+                title: Text(
+                  'Configurações',
+                  style: TextStyle(color: textColor, fontSize: 16),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  // TODO: Navegar para tela de configurações
+                },
+              ),
+              Divider(height: 1, color: borderLines),
+              ListTile(
+                leading: Icon(Icons.help_outline, color: buttonColor),
+                title: Text(
+                  'Ajuda',
+                  style: TextStyle(color: textColor, fontSize: 16),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  // TODO: Navegar para tela de ajuda
+                },
+              ),
+              const Spacer(),
+              Divider(height: 1, color: borderLines),
+              ListTile(
+                leading: const Icon(Icons.exit_to_app, color: Colors.red),
+                title: const Text(
+                  'Sair',
+                  style: TextStyle(color: Colors.red, fontSize: 16),
+                ),
+                onTap: () async {
+                  await LocalStorageService.clearSession();
+                  if (context.mounted) {
+                    Navigator.pushReplacementNamed(context, '/login');
+                  }
+                },
+              ),
+              const SizedBox(height: 10),
             ],
           ),
         ),
@@ -456,6 +557,14 @@ class _HomeSimpleState extends State<HomeSimple> {
       body: Column(
         children: [
           const SizedBox(height: 20),
+
+          // Indicador de entrega ativa
+          if (_currentDelivery != null)
+            _buildActiveDeliveryBanner(),
+
+          if (_currentDelivery != null)
+            const SizedBox(height: 20),
+
           // Toggle Online/Offline
           const Center(
             child: OnlineOfflineToggle(),
@@ -473,6 +582,155 @@ class _HomeSimpleState extends State<HomeSimple> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildActiveDeliveryBanner() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [buttonColor, buttonColor.withOpacity(0.8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: buttonColor.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ActiveDeliveryScreen(
+                  delivery: _currentDelivery!,
+                ),
+              ),
+            );
+            // Recarregar entrega após voltar
+            if (result != null || mounted) {
+              _loadCurrentDelivery();
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.local_shipping,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Entrega em Andamento',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _currentDelivery!['companyName'] ?? 'Empresa',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.straighten,
+                                  color: Colors.white,
+                                  size: 12,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${_currentDelivery!['distance'] ?? '0'} km',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.attach_money,
+                                  color: Colors.white,
+                                  size: 12,
+                                ),
+                                Text(
+                                  'R\$ ${_currentDelivery!['driverAmount'] ?? '0.00'}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right,
+                  color: Colors.white,
+                  size: 32,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

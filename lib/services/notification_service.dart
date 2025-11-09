@@ -1,6 +1,7 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 // Handler para notificações em background
@@ -17,12 +18,15 @@ class NotificationService {
 
   static String? _fcmToken;
   static Function(Map<String, dynamic>)? _onNotificationTap;
+  static Function(Map<String, dynamic>)? _onMessageReceived;
 
   // Inicializar notificações
   static Future<void> initialize({
     Function(Map<String, dynamic>)? onNotificationTap,
+    Function(Map<String, dynamic>)? onMessageReceived,
   }) async {
     _onNotificationTap = onNotificationTap;
+    _onMessageReceived = onMessageReceived;
 
     debugPrint('🔔 Inicializando serviço de notificações...');
 
@@ -132,8 +136,16 @@ class NotificationService {
     debugPrint('Corpo: ${message.notification?.body}');
     debugPrint('Dados: ${message.data}');
 
-    // Mostrar notificação local
+    // Sempre mostrar notificação local (para aparecer na barra de notificações)
     await _showLocalNotification(message);
+
+    // Se for notificação de entrega, processar imediatamente
+    if (message.data['type'] == 'new_delivery' || message.data['type'] == 'new_delivery_request') {
+      debugPrint('🚚 Notificação de entrega detectada - processando imediatamente');
+      if (_onMessageReceived != null) {
+        _onMessageReceived!(message.data);
+      }
+    }
   }
 
   // Handler: Usuário toca na notificação
@@ -150,20 +162,51 @@ class NotificationService {
   // Mostrar notificação local
   static Future<void> _showLocalNotification(RemoteMessage message) async {
     final notification = message.notification;
-    if (notification == null) {
-      debugPrint('⚠️ Notificação sem conteúdo de apresentação');
+
+    // Para mensagens data-only, pegar título e corpo do campo data
+    String? title;
+    String? body;
+
+    if (notification != null) {
+      title = notification.title;
+      body = notification.body;
+    } else if (message.data.isNotEmpty) {
+      // Usar dados do campo data
+      title = message.data['title'] as String?;
+      body = message.data['body'] as String?;
+    }
+
+    if (title == null || body == null) {
+      debugPrint('⚠️ Notificação sem título ou corpo');
       return;
     }
 
-    const androidDetails = AndroidNotificationDetails(
+    // Para notificações de entrega, usar som insistente e vibração contínua
+    final isDeliveryNotification = message.data['type'] == 'new_delivery' ||
+                                     message.data['type'] == 'new_delivery_request';
+
+    final androidDetails = AndroidNotificationDetails(
       'high_importance_channel',
       'Notificações Importantes',
       channelDescription: 'Canal para notificações importantes',
-      importance: Importance.high,
-      priority: Priority.high,
+      importance: Importance.max,
+      priority: Priority.max,
       icon: '@mipmap/ic_launcher',
       playSound: true,
+      // Using default notification sound instead of custom sound
       enableVibration: true,
+      vibrationPattern: isDeliveryNotification
+          ? Int64List.fromList([0, 1000, 500, 1000, 500, 1000, 500, 1000]) // Vibra repetidamente
+          : null,
+      category: AndroidNotificationCategory.call, // Categoria de chamada para mais atenção
+      fullScreenIntent: isDeliveryNotification, // Mostrar em tela cheia
+      ongoing: isDeliveryNotification, // Não pode ser descartada facilmente
+      autoCancel: !isDeliveryNotification, // Não auto-cancelar entregas
+      timeoutAfter: isDeliveryNotification
+          ? (message.data['acceptanceTimeout'] != null
+              ? int.tryParse(message.data['acceptanceTimeout'].toString())! * 1000
+              : 60000)
+          : null,
     );
 
     const iosDetails = DarwinNotificationDetails(
@@ -172,20 +215,20 @@ class NotificationService {
       presentSound: true,
     );
 
-    const notificationDetails = NotificationDetails(
+    final notificationDetails = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
 
     await _localNotifications.show(
-      notification.hashCode,
-      notification.title,
-      notification.body,
+      DateTime.now().millisecondsSinceEpoch.remainder(2147483647), // ID dentro do range de 32-bit
+      title,
+      body,
       notificationDetails,
       payload: jsonEncode(message.data),
     );
 
-    debugPrint('🔔 Notificação local exibida');
+    debugPrint('🔔 Notificação local exibida: $title');
   }
 
   // Cancelar todas as notificações

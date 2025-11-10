@@ -15,7 +15,8 @@
       "Bash(nul)",
       "Bash(dir:*)",
       "Bash(timeout 30 echo:*)",
-      "Bash(\\.pipeflutter_tools_stdin)"
+      "Bash(\\.pipeflutter_tools_stdin)",
+      "Bash(timeout 2 echo:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/registration_status_service.dart';
+import '../services/location_permission_service.dart';
 import '../styles/styles.dart';
 import 'login/login.dart';
 import 'login/approval_status_screen.dart';
@@ -22,6 +23,13 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _checkNavigationStatus() async {
     // Aguardar um pouco para mostrar splash
     await Future.delayed(const Duration(seconds: 2));
+
+    if (!mounted) return;
+
+    // 1. Primeiro, verificar e solicitar permissões de localização
+    await LocationPermissionService.checkAndRequestLocationPermission(context);
+
+    if (!mounted) return;
 
     final status = await RegistrationStatusService.checkNavigationStatus();
 

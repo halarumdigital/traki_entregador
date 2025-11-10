@@ -8,6 +8,7 @@ import '../styles/styles.dart';
 import '../functions/functions.dart';
 import '../services/local_storage_service.dart';
 import '../services/delivery_service.dart';
+import '../services/location_permission_service.dart';
 import 'driver_profile_screen.dart';
 import 'active_delivery_screen.dart';
 
@@ -18,7 +19,7 @@ class HomeSimple extends StatefulWidget {
   State<HomeSimple> createState() => _HomeSimpleState();
 }
 
-class _HomeSimpleState extends State<HomeSimple> {
+class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
   Map<String, dynamic>? _driverProfile;
   bool _isLoadingProfile = false;
   Timer? _locationTimer;
@@ -28,6 +29,7 @@ class _HomeSimpleState extends State<HomeSimple> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadDriverProfile();
     _loadCurrentDelivery();
     _startLocationUpdates();
@@ -35,8 +37,27 @@ class _HomeSimpleState extends State<HomeSimple> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _locationTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    if (state == AppLifecycleState.resumed) {
+      debugPrint('📱 App voltou para foreground - verificando permissões de localização');
+      // Verificar permissões de localização quando o app volta para foreground
+      _checkLocationPermissionOnResume();
+    }
+  }
+
+  Future<void> _checkLocationPermissionOnResume() async {
+    if (!mounted) return;
+
+    // Verificar e solicitar permissões se necessário
+    await LocationPermissionService.checkAndRequestLocationPermission(context);
   }
 
   void _startLocationUpdates() {

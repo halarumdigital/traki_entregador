@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../styles/styles.dart';
 import '../services/delivery_service.dart';
 import '../pages/active_delivery_screen.dart';
@@ -18,11 +18,23 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
   Timer? _timer;
   Duration _timeLeft = Duration.zero;
   bool _isProcessing = false;
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   @override
   void initState() {
     super.initState();
     _startCountdown();
+    _startNotificationSound();
+  }
+
+  Future<void> _startNotificationSound() async {
+    try {
+      await _audioPlayer.setReleaseMode(ReleaseMode.loop); // Tocar em loop
+      await _audioPlayer.play(AssetSource('audio/request_sound.mp3'));
+      debugPrint('🔊 Som de notificação iniciado em loop');
+    } catch (e) {
+      debugPrint('❌ Erro ao iniciar som de notificação: $e');
+    }
   }
 
   void _startCountdown() {
@@ -81,6 +93,9 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
   @override
   void dispose() {
     _timer?.cancel();
+    _audioPlayer.stop();
+    _audioPlayer.dispose();
+    debugPrint('🔇 Som de notificação parado');
     super.dispose();
   }
 
@@ -95,31 +110,80 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
   }
 
   Future<void> _acceptDelivery() async {
-    if (_isProcessing) return;
+    if (_isProcessing) {
+      debugPrint('⚠️ Já está processando uma ação');
+      return;
+    }
+
+    debugPrint('🔵 BOTÃO ACEITAR CLICADO');
+    debugPrint('📋 DeliveryId: ${widget.data['deliveryId']}');
+    debugPrint('📋 RequestId: ${widget.data['requestId']}');
+    debugPrint('📋 Request Number: ${widget.data['requestNumber']}');
+    debugPrint('📋 Dados completos: ${widget.data}');
 
     setState(() {
       _isProcessing = true;
     });
 
     try {
-      debugPrint('✅ Aceitando entrega: ${widget.data['deliveryId']}');
+      // Para entregas relançadas, o backend envia 'requestId' ao invés de 'deliveryId'
+      final deliveryId = widget.data['deliveryId'] ?? widget.data['requestId'];
+      debugPrint('✅ Chamando DeliveryService.acceptDelivery com ID: $deliveryId');
 
       final result = await DeliveryService.acceptDelivery(
-        widget.data['deliveryId'],
+        deliveryId,
       );
 
       if (!mounted) return;
 
       if (result != null) {
+        // Verificar se é erro de expiração
+        if (result['error'] == 'expired') {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: const [
+                  Icon(Icons.timer_off, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text('Esta entrega já expirou e não está mais disponível'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+          return;
+        }
+
+        debugPrint('✅ Entrega aceita! Buscando dados atualizados...');
+
+        // Buscar dados atualizados do backend
+        final updatedDelivery = await DeliveryService.getCurrentDelivery();
+
+        if (!mounted) return;
+
         Navigator.pop(context);
 
-        // Navigate to active delivery screen
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ActiveDeliveryScreen(delivery: result),
-          ),
-        );
+        // Navigate to active delivery screen com dados atualizados
+        if (updatedDelivery != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ActiveDeliveryScreen(delivery: updatedDelivery),
+            ),
+          );
+        } else {
+          // Fallback: usar dados do accept se não conseguir buscar atualizados
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ActiveDeliveryScreen(delivery: result),
+            ),
+          );
+        }
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -199,39 +263,6 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
     }
   }
 
-  Future<void> _openWhatsApp(String phoneNumber) async {
-    try {
-      // Remover caracteres não numéricos
-      final cleanNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
-
-      // URL do WhatsApp (funciona em Android e iOS)
-      final whatsappUrl = Uri.parse('https://wa.me/$cleanNumber');
-
-      if (await canLaunchUrl(whatsappUrl)) {
-        await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Não foi possível abrir o WhatsApp'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('❌ Erro ao abrir WhatsApp: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Erro ao abrir WhatsApp'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -285,7 +316,9 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        widget.data['companyName'] ?? 'Empresa',
+                        (widget.data['companyName'] ?? '').trim().isEmpty
+                            ? 'Empresa'
+                            : widget.data['companyName'],
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -312,99 +345,6 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
                 widget.data['dropoffAddress'] ?? '',
               ),
               const SizedBox(height: 16),
-
-              // Dados do Cliente
-              if (widget.data['customerWhatsapp'] != null ||
-                  widget.data['deliveryReference'] != null)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.purple.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.purple.withOpacity(0.3)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.person, color: Colors.purple, size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Dados do Cliente',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.purple[900],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-
-                      // WhatsApp do cliente
-                      if (widget.data['customerWhatsapp'] != null) ...[
-                        InkWell(
-                          onTap: () => _openWhatsApp(widget.data['customerWhatsapp']),
-                          child: Row(
-                            children: [
-                              Icon(Icons.phone, color: Colors.green[700], size: 16),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  widget.data['customerWhatsapp'],
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.green,
-                                    decoration: TextDecoration.underline,
-                                  ),
-                                ),
-                              ),
-                              Icon(Icons.open_in_new, color: Colors.green[700], size: 14),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-
-                      // Referência do local
-                      if (widget.data['deliveryReference'] != null) ...[
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(Icons.location_on, color: Colors.orange[700], size: 16),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Referência:',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: textColor.withOpacity(0.6),
-                                    ),
-                                  ),
-                                  Text(
-                                    widget.data['deliveryReference'],
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              if (widget.data['customerWhatsapp'] != null ||
-                  widget.data['deliveryReference'] != null)
-                const SizedBox(height: 16),
 
               // Informações da entrega
               Row(

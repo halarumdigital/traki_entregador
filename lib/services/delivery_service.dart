@@ -59,20 +59,29 @@ class DeliveryService {
       );
 
       debugPrint('📥 Status Code: ${response.statusCode}');
+      debugPrint('📦 Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(response.body);
+        debugPrint('📋 Response JSON: $jsonResponse');
+
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
           debugPrint('✅ Entrega atual carregada');
 
           // Mapear campos snake_case para camelCase para compatibilidade com ActiveDeliveryScreen
           final data = jsonResponse['data'] as Map<String, dynamic>;
-          return {
+
+          debugPrint('🔍 Mapeando customerWhatsapp: ${data['customer_whatsapp']}');
+          debugPrint('🔍 Mapeando deliveryReference: ${data['delivery_reference']}');
+
+          final mappedData = {
             'requestId': data['id'],
             'requestNumber': data['request_number'],
             'companyName': data['company_name'],
             'companyPhone': data['company_phone'],
             'customerName': data['customer_name'],
+            'customerWhatsapp': data['customer_whatsapp'],
+            'deliveryReference': data['delivery_reference'],
             'pickupAddress': data['pick_address'],
             'pickupLat': data['pick_lat'],
             'pickupLng': data['pick_lng'],
@@ -83,7 +92,14 @@ class DeliveryService {
             'estimatedTime': data['total_time']?.toString(),
             'driverAmount': data['request_eta_amount']?.toString(),
           };
+
+          debugPrint('📤 Retornando objeto mapeado: $mappedData');
+          return mappedData;
+        } else {
+          debugPrint('⚠️ Backend retornou success=false ou data=null');
         }
+      } else {
+        debugPrint('❌ Status code diferente de 200: ${response.statusCode}');
       }
 
       return null;
@@ -96,23 +112,36 @@ class DeliveryService {
   // Aceitar entrega
   static Future<Map<String, dynamic>?> acceptDelivery(String deliveryId) async {
     try {
-      debugPrint('✅ Aceitando entrega: $deliveryId');
+      debugPrint('🟢 ========== INICIANDO ACCEPT DELIVERY ==========');
+      debugPrint('✅ DeliveryId recebido: $deliveryId');
+      debugPrint('🔍 Tipo do deliveryId: ${deliveryId.runtimeType}');
 
       final token = await LocalStorageService.getAccessToken();
       if (token == null) {
-        debugPrint('❌ Token não encontrado');
+        debugPrint('❌ Token não encontrado no LocalStorage');
         return null;
       }
 
+      debugPrint('🔑 Token obtido (primeiros 30 caracteres): ${token.substring(0, token.length > 30 ? 30 : token.length)}...');
+      debugPrint('🔑 Tamanho do token: ${token.length} caracteres');
+
+      final endpoint = '${url}api/v1/driver/requests/$deliveryId/accept';
+      debugPrint('📡 URL completa: $endpoint');
+      debugPrint('📋 Headers que serão enviados:');
+      debugPrint('   - Authorization: Bearer ${token.substring(0, 20)}...');
+
       final response = await http.post(
-        Uri.parse('${url}api/v1/driver/requests/$deliveryId/accept'),
+        Uri.parse(endpoint),
         headers: {
           'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
         },
       );
 
+      debugPrint('📥 ========== RESPOSTA DO SERVIDOR ==========');
       debugPrint('📥 Status Code: ${response.statusCode}');
       debugPrint('📦 Response Body: ${response.body}');
+      debugPrint('📋 Response Headers: ${response.headers}');
 
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(response.body);
@@ -124,11 +153,31 @@ class DeliveryService {
         } else {
           debugPrint('⚠️ Success = false: ${jsonResponse['message']}');
         }
+      } else if (response.statusCode == 401) {
+        debugPrint('❌ ========== ERRO 401: NÃO AUTORIZADO ==========');
+        debugPrint('❌ Possíveis causas:');
+        debugPrint('   1. Token expirado ou inválido');
+        debugPrint('   2. Backend não reconhece o token');
+        debugPrint('   3. Endpoint requer permissões diferentes para entregas relançadas');
+        debugPrint('❌ Body da resposta: ${response.body}');
+        try {
+          final errorJson = jsonDecode(response.body);
+          debugPrint('❌ Mensagem de erro: ${errorJson['message'] ?? 'Não especificada'}');
+          debugPrint('❌ Detalhes: $errorJson');
+        } catch (e) {
+          debugPrint('❌ Não foi possível parsear o JSON de erro');
+        }
+      } else if (response.statusCode == 410) {
+        debugPrint('⏰ ========== ERRO 410: ENTREGA EXPIRADA ==========');
+        debugPrint('⏰ A entrega já não está mais disponível');
+        debugPrint('⏰ Body: ${response.body}');
+        return {'error': 'expired', 'message': 'Esta entrega já expirou'};
       } else {
         debugPrint('❌ Status code diferente de 200: ${response.statusCode}');
         debugPrint('❌ Body: ${response.body}');
       }
 
+      debugPrint('🔴 ========== FIM ACCEPT DELIVERY (FALHA) ==========');
       return null;
     } catch (e) {
       debugPrint('❌ Erro ao aceitar entrega: $e');

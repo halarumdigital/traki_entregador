@@ -208,6 +208,39 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
     }
   }
 
+  Future<void> _openWhatsApp(String phoneNumber) async {
+    try {
+      // Remover caracteres não numéricos
+      final cleanNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+
+      // URL do WhatsApp (funciona em Android e iOS)
+      final whatsappUrl = Uri.parse('https://wa.me/$cleanNumber');
+
+      if (await canLaunchUrl(whatsappUrl)) {
+        await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Não foi possível abrir o WhatsApp'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao abrir WhatsApp: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erro ao abrir WhatsApp'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _showNavigationOptions({required bool isPickup}) {
     final address = isPickup
         ? (_delivery['pickupAddress'] ?? 'Local de retirada')
@@ -459,6 +492,8 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
                       iconColor: Colors.orange,
                       name: _delivery['customerName'] ?? 'Cliente',
                       address: _delivery['deliveryAddress'] ?? _delivery['dropoffAddress'] ?? '',
+                      phone: _delivery['customerWhatsapp'],
+                      reference: _delivery['deliveryReference'],
                       onNavigate: () => _showNavigationOptions(isPickup: false),
                     ),
 
@@ -521,6 +556,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
     required String name,
     required String address,
     String? phone,
+    String? reference,
     required VoidCallback onNavigate,
   }) {
     return Container(
@@ -581,18 +617,86 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
           ),
           if (phone != null && phone.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.phone, size: 18, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text(
-                  phone,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
+            InkWell(
+              onTap: () => _openWhatsApp(phone),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.green.withOpacity(0.3)),
                 ),
-              ],
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.phone, size: 16, color: Colors.green[700]),
+                    const SizedBox(width: 6),
+                    Text(
+                      phone,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.green[700],
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Ícone do WhatsApp
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Icon(
+                        Icons.chat,
+                        size: 14,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          if (reference != null && reference.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.orange.withOpacity(0.3)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.location_on, size: 18, color: Colors.orange[700]),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Ponto de Referência:',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.orange[700],
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          reference,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
           const SizedBox(height: 12),

@@ -16,7 +16,8 @@
       "Bash(dir:*)",
       "Bash(timeout 30 echo:*)",
       "Bash(\\.pipeflutter_tools_stdin)",
-      "Bash(timeout 2 echo:*)"
+      "Bash(timeout 2 echo:*)",
+      "Bash(copy \"F:\\flutter_driver\\assets\\audio\\request_sound.mp3\" \"F:\\flutter_driver\\android\\app\\src\\main\\res\\raw\\request_sound.mp3\")"
     ],
     "deny": [],
     "ask": []

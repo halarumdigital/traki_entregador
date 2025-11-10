@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../styles/styles.dart';
 import '../services/delivery_service.dart';
+import '../services/notification_service.dart';
 import '../pages/active_delivery_screen.dart';
 
 class DeliveryRequestDialog extends StatefulWidget {
@@ -19,12 +20,65 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
   Duration _timeLeft = Duration.zero;
   bool _isProcessing = false;
   final AudioPlayer _audioPlayer = AudioPlayer();
+  StreamSubscription<String>? _cancelSubscription;
 
   @override
   void initState() {
     super.initState();
     _startCountdown();
     _startNotificationSound();
+    _listenForCancellation();
+  }
+
+  /// Escutar eventos de cancelamento de entregas
+  void _listenForCancellation() {
+    debugPrint('👂 Iniciando escuta de cancelamentos para entrega: ${widget.data['deliveryId'] ?? widget.data['requestId']}');
+
+    _cancelSubscription = NotificationService.onDeliveryCancelled.listen((cancelledRequestId) {
+      final currentRequestId = widget.data['deliveryId'] ?? widget.data['requestId'];
+
+      debugPrint('🔔 Evento de cancelamento recebido para requestId: $cancelledRequestId');
+      debugPrint('📋 RequestId atual do modal: $currentRequestId');
+
+      // Verificar se é a entrega atual
+      if (cancelledRequestId == currentRequestId) {
+        debugPrint('🚫 Esta entrega foi cancelada! Fechando modal...');
+        _handleDeliveryCancelled();
+      } else {
+        debugPrint('ℹ️ Cancelamento não é para esta entrega (ID diferente)');
+      }
+    });
+  }
+
+  /// Handler quando a entrega é cancelada
+  void _handleDeliveryCancelled() {
+    // Cancelar timer
+    _timer?.cancel();
+
+    // Parar som
+    _audioPlayer.stop();
+
+    // Fechar modal
+    if (mounted) {
+      Navigator.of(context).pop();
+
+      // Mostrar snackbar informando
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: const [
+              Icon(Icons.cancel, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text('Esta entrega foi cancelada pela empresa'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   Future<void> _startNotificationSound() async {
@@ -93,9 +147,11 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
   @override
   void dispose() {
     _timer?.cancel();
+    _cancelSubscription?.cancel();
     _audioPlayer.stop();
     _audioPlayer.dispose();
     debugPrint('🔇 Som de notificação parado');
+    debugPrint('🔌 Subscription de cancelamento desconectada');
     super.dispose();
   }
 

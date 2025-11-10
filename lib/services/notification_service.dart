@@ -2,6 +2,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 // Handler para notificações em background
@@ -19,6 +20,12 @@ class NotificationService {
   static String? _fcmToken;
   static Function(Map<String, dynamic>)? _onNotificationTap;
   static Function(Map<String, dynamic>)? _onMessageReceived;
+
+  // StreamController para eventos de cancelamento de entregas
+  static final _deliveryCancelledController = StreamController<String>.broadcast();
+
+  // Stream pública para ouvir eventos de cancelamento
+  static Stream<String> get onDeliveryCancelled => _deliveryCancelledController.stream;
 
   // Inicializar notificações
   static Future<void> initialize({
@@ -77,7 +84,9 @@ class NotificationService {
       },
     );
 
-    // 4. Criar canal de notificação (Android)
+    // 4. Criar canais de notificação (Android)
+
+    // Canal principal para notificações gerais
     const androidChannel = AndroidNotificationChannel(
       'high_importance_channel',
       'Notificações Importantes',
@@ -87,12 +96,27 @@ class NotificationService {
       enableVibration: true,
     );
 
-    await _localNotifications
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(androidChannel);
+    // Canal específico para entregas - com som customizado e prioridade máxima
+    const deliveryChannel = AndroidNotificationChannel(
+      'delivery_requests_channel',
+      'Solicitações de Entrega',
+      description: 'Notificações de novas solicitações de entrega',
+      importance: Importance.max,
+      playSound: true,
+      sound: RawResourceAndroidNotificationSound('request_sound'),
+      enableVibration: true,
+      enableLights: true,
+      ledColor: Color.fromARGB(255, 255, 0, 0),
+    );
 
-    debugPrint('📢 Canal de notificação Android criado');
+    final androidImplementation = _localNotifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+
+    await androidImplementation?.createNotificationChannel(androidChannel);
+    await androidImplementation?.createNotificationChannel(deliveryChannel);
+
+    debugPrint('📢 Canais de notificação Android criados');
 
     // 5. Obter FCM Token
     try {
@@ -136,15 +160,38 @@ class NotificationService {
     debugPrint('Corpo: ${message.notification?.body}');
     debugPrint('Dados: ${message.data}');
 
-    // Sempre mostrar notificação local (para aparecer na barra de notificações)
-    await _showLocalNotification(message);
+    final notificationType = message.data['type'] as String?;
 
     // Se for notificação de entrega, processar imediatamente
-    if (message.data['type'] == 'new_delivery' || message.data['type'] == 'new_delivery_request') {
+    if (notificationType == 'new_delivery' || notificationType == 'new_delivery_request') {
       debugPrint('🚚 Notificação de entrega detectada - processando imediatamente');
+
+      // Sempre mostrar notificação local (para aparecer na barra de notificações)
+      await _showLocalNotification(message);
+
       if (_onMessageReceived != null) {
         _onMessageReceived!(message.data);
       }
+    }
+    // Se for notificação de cancelamento de entrega
+    else if (notificationType == 'DELIVERY_CANCELLED' || notificationType == 'delivery_cancelled') {
+      debugPrint('🚫 ===== ENTREGA CANCELADA =====');
+      debugPrint('RequestId: ${message.data['requestId']}');
+      debugPrint('Mensagem: ${message.data['message']}');
+
+      // Emitir evento para fechar modal
+      final requestId = message.data['requestId'] as String?;
+      if (requestId != null) {
+        _deliveryCancelledController.add(requestId);
+        debugPrint('✅ Evento de cancelamento emitido para requestId: $requestId');
+      }
+
+      // Mostrar notificação local informando o cancelamento
+      await _showLocalNotification(message);
+    }
+    // Para outros tipos de notificação
+    else {
+      await _showLocalNotification(message);
     }
   }
 
@@ -185,29 +232,42 @@ class NotificationService {
     final isDeliveryNotification = message.data['type'] == 'new_delivery' ||
                                      message.data['type'] == 'new_delivery_request';
 
-    final androidDetails = AndroidNotificationDetails(
-      'high_importance_channel',
-      'Notificações Importantes',
-      channelDescription: 'Canal para notificações importantes',
-      importance: Importance.max,
-      priority: Priority.max,
-      icon: '@mipmap/ic_launcher',
-      playSound: true,
-      // Using default notification sound instead of custom sound
-      enableVibration: true,
-      vibrationPattern: isDeliveryNotification
-          ? Int64List.fromList([0, 1000, 500, 1000, 500, 1000, 500, 1000]) // Vibra repetidamente
-          : null,
-      category: AndroidNotificationCategory.call, // Categoria de chamada para mais atenção
-      fullScreenIntent: isDeliveryNotification, // Mostrar em tela cheia
-      ongoing: isDeliveryNotification, // Não pode ser descartada facilmente
-      autoCancel: !isDeliveryNotification, // Não auto-cancelar entregas
-      timeoutAfter: isDeliveryNotification
-          ? (message.data['acceptanceTimeout'] != null
-              ? int.tryParse(message.data['acceptanceTimeout'].toString())! * 1000
-              : 60000)
-          : null,
-    );
+    final androidDetails = isDeliveryNotification
+        ? AndroidNotificationDetails(
+            'delivery_requests_channel',
+            'Solicitações de Entrega',
+            channelDescription: 'Notificações de novas solicitações de entrega',
+            importance: Importance.max,
+            priority: Priority.max,
+            icon: '@mipmap/ic_launcher',
+            playSound: true,
+            sound: RawResourceAndroidNotificationSound('request_sound'),
+            enableVibration: true,
+            vibrationPattern: Int64List.fromList([0, 1000, 500, 1000, 500, 1000]), // Vibra repetidamente
+            category: AndroidNotificationCategory.call, // Categoria de chamada para mais atenção
+            fullScreenIntent: true, // Mostrar em tela cheia mesmo com celular bloqueado
+            ongoing: true, // Não pode ser descartada facilmente
+            autoCancel: false, // Não auto-cancelar
+            visibility: NotificationVisibility.public, // Mostrar na tela de bloqueio
+            channelShowBadge: true,
+            enableLights: true,
+            ledColor: Color.fromARGB(255, 255, 0, 0),
+            ledOnMs: 1000,
+            ledOffMs: 500,
+            timeoutAfter: message.data['acceptanceTimeout'] != null
+                ? int.tryParse(message.data['acceptanceTimeout'].toString())! * 1000
+                : 120000, // 2 minutos padrão
+          )
+        : AndroidNotificationDetails(
+            'high_importance_channel',
+            'Notificações Importantes',
+            channelDescription: 'Canal para notificações importantes',
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: '@mipmap/ic_launcher',
+            playSound: true,
+            enableVibration: true,
+          );
 
     const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
@@ -242,5 +302,11 @@ class NotificationService {
     final pendingNotifications =
         await _localNotifications.pendingNotificationRequests();
     return pendingNotifications.length;
+  }
+
+  // Limpar recursos (chamar ao fechar o app)
+  static void dispose() {
+    _deliveryCancelledController.close();
+    debugPrint('🗑️ NotificationService disposed');
   }
 }

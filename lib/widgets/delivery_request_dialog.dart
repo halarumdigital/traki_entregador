@@ -26,6 +26,11 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
   @override
   void initState() {
     super.initState();
+    debugPrint('🚨 ===== MODAL DE ENTREGA ABERTO =====');
+    debugPrint('📦 Dados recebidos no modal: ${widget.data}');
+    debugPrint('🔍 needs_return: ${widget.data['needs_return']}');
+    debugPrint('🔍 needsReturn: ${widget.data['needsReturn']}');
+
     _requestId = _resolveRequestId(widget.data);
     final cancelledBeforeInit = _requestId != null &&
         NotificationService.consumePendingCancellation(_requestId!);
@@ -468,6 +473,57 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
                 ],
               ),
               const SizedBox(height: 16),
+
+              // Aviso de Retorno (quando needs_return = true)
+              if (widget.data['needsReturn'] == true ||
+                  widget.data['needs_return'] == true ||
+                  widget.data['needsReturn'] == 'true' ||
+                  widget.data['needs_return'] == 'true')
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF4E6),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFFFFB020),
+                      width: 2,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: const [
+                          Text(
+                            '⚠️',
+                            style: TextStyle(fontSize: 20),
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'ESTA ENTREGA POSSUI VOLTA',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFC77700),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Você precisará retornar ao ponto de retirada após entregar',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF8B5A00),
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
               // Valor
               Container(

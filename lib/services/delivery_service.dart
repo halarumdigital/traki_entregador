@@ -89,8 +89,8 @@ class DeliveryService {
             'deliveryLat': data['drop_lat'],
             'deliveryLng': data['drop_lng'],
             'distance': data['total_distance']?.toString(),
-            'estimatedTime': data['total_time']?.toString(),
-            'driverAmount': data['request_eta_amount']?.toString(),
+            'estimatedTime': data['estimated_time']?.toString() ?? data['total_time']?.toString(),
+            'driverAmount': data['driver_amount']?.toString() ?? data['request_eta_amount']?.toString(),
           };
 
           debugPrint('📤 Retornando objeto mapeado: $mappedData');
@@ -313,14 +313,14 @@ class DeliveryService {
   }
 
   // Motorista entregou o pedido
-  static Future<bool> delivered(String deliveryId) async {
+  static Future<Map<String, dynamic>?> delivered(String deliveryId) async {
     try {
       debugPrint('✅ Pedido entregue: $deliveryId');
 
       final token = await LocalStorageService.getAccessToken();
       if (token == null) {
         debugPrint('❌ Token não encontrado');
-        return false;
+        return null;
       }
 
       debugPrint('🔑 Token obtido: ${token.substring(0, 20)}...');
@@ -343,7 +343,10 @@ class DeliveryService {
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(response.body);
         debugPrint('✅ Entrega marcada');
-        return jsonResponse['success'] == true;
+        if (jsonResponse['success'] == true) {
+          // Retornar dados da resposta incluindo status e needsReturn
+          return jsonResponse['data'];
+        }
       } else if (response.statusCode == 401) {
         debugPrint('❌ ERRO DE AUTENTICAÇÃO - Token inválido ou expirado');
         debugPrint('❌ Response: ${response.body}');
@@ -351,10 +354,10 @@ class DeliveryService {
         debugPrint('❌ Status code diferente de 200: ${response.statusCode}');
       }
 
-      return false;
+      return null;
     } catch (e) {
       debugPrint('❌ Erro ao marcar entrega: $e');
-      return false;
+      return null;
     }
   }
 
@@ -401,6 +404,102 @@ class DeliveryService {
     } catch (e) {
       debugPrint('❌ Erro ao completar entrega: $e');
       return false;
+    }
+  }
+
+  // Iniciar retorno ao ponto de origem
+  static Future<Map<String, dynamic>?> startReturn(String deliveryId) async {
+    try {
+      debugPrint('🔄 Iniciando retorno ao ponto de origem: $deliveryId');
+
+      final token = await LocalStorageService.getAccessToken();
+      if (token == null) {
+        debugPrint('❌ Token não encontrado');
+        return null;
+      }
+
+      debugPrint('🔑 Token obtido: ${token.substring(0, 20)}...');
+
+      final endpoint = '${url}api/v1/driver/deliveries/$deliveryId/start-return';
+      debugPrint('📡 Chamando endpoint: $endpoint');
+      debugPrint('📋 Headers: Authorization: Bearer ${token.substring(0, 20)}...');
+
+      final response = await http.post(
+        Uri.parse(endpoint),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      debugPrint('📥 Status Code: ${response.statusCode}');
+      debugPrint('📦 Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        debugPrint('✅ Retorno iniciado');
+        if (jsonResponse['success'] == true) {
+          return jsonResponse['data'];
+        }
+      } else if (response.statusCode == 401) {
+        debugPrint('❌ ERRO DE AUTENTICAÇÃO - Token inválido ou expirado');
+        debugPrint('❌ Response: ${response.body}');
+      } else {
+        debugPrint('❌ Status code diferente de 200: ${response.statusCode}');
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('❌ Erro ao iniciar retorno: $e');
+      return null;
+    }
+  }
+
+  // Completar retorno ao ponto de origem
+  static Future<Map<String, dynamic>?> completeReturn(String deliveryId) async {
+    try {
+      debugPrint('✅ Completando retorno ao ponto de origem: $deliveryId');
+
+      final token = await LocalStorageService.getAccessToken();
+      if (token == null) {
+        debugPrint('❌ Token não encontrado');
+        return null;
+      }
+
+      debugPrint('🔑 Token obtido: ${token.substring(0, 20)}...');
+
+      final endpoint = '${url}api/v1/driver/deliveries/$deliveryId/complete-return';
+      debugPrint('📡 Chamando endpoint: $endpoint');
+      debugPrint('📋 Headers: Authorization: Bearer ${token.substring(0, 20)}...');
+
+      final response = await http.post(
+        Uri.parse(endpoint),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      debugPrint('📥 Status Code: ${response.statusCode}');
+      debugPrint('📦 Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        debugPrint('✅ Retorno completado - Entrega finalizada');
+        if (jsonResponse['success'] == true) {
+          return jsonResponse['data'];
+        }
+      } else if (response.statusCode == 401) {
+        debugPrint('❌ ERRO DE AUTENTICAÇÃO - Token inválido ou expirado');
+        debugPrint('❌ Response: ${response.body}');
+      } else {
+        debugPrint('❌ Status code diferente de 200: ${response.statusCode}');
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('❌ Erro ao completar retorno: $e');
+      return null;
     }
   }
 }

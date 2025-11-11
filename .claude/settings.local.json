@@ -27,7 +27,10 @@
       "Bash(\\.pipeflutter_tools_stdin_9ddd2e)",
       "Bash(timeout 2 cmd /c 'echo r > \\\\.\\pipe\\flutter_tools_stdin_e1de3a' 2)",
       "Bash(timeout 2 cmd /c 'echo R > \\\\.\\pipe\\flutter_tools_stdin_e1de3a' 2)",
-      "Bash(timeout 2 cmd /c 'echo R > \\\\.\\pipe\\flutter_tools_stdin_294675' 2)"
+      "Bash(timeout 2 cmd /c 'echo R > \\\\.\\pipe\\flutter_tools_stdin_294675' 2)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(timeout 5 cmd:*)"
     ],
     "deny": [],
     "ask": []

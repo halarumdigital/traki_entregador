@@ -17,7 +17,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
   bool _isProcessing = false;
 
   // Status da entrega
-  String _currentStatus = 'accepted'; // accepted, arrived, picked_up, delivered, completed
+  String _currentStatus = 'accepted'; // accepted, arrived, picked_up, delivered, delivered_awaiting_return, returning, completed
 
   @override
   void initState() {
@@ -44,6 +44,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
     });
 
     bool success = false;
+    Map<String, dynamic>? responseData;
 
     try {
       switch (newStatus) {
@@ -54,7 +55,16 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
           success = await DeliveryService.pickedUp(deliveryId);
           break;
         case 'delivered':
-          success = await DeliveryService.delivered(deliveryId);
+          responseData = await DeliveryService.delivered(deliveryId);
+          success = responseData != null;
+          break;
+        case 'start_return':
+          responseData = await DeliveryService.startReturn(deliveryId);
+          success = responseData != null;
+          break;
+        case 'complete_return':
+          responseData = await DeliveryService.completeReturn(deliveryId);
+          success = responseData != null;
           break;
         case 'completed':
           success = await DeliveryService.complete(deliveryId);
@@ -64,30 +74,126 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
       if (!mounted) return;
 
       if (success) {
-        setState(() {
-          _currentStatus = newStatus;
-        });
+        // Verificar se precisa retornar ao ponto de origem
+        if (newStatus == 'delivered' && responseData != null) {
+          final needsReturn = (responseData['needsReturn'] == true ||
+                               responseData['needsReturn'] == 'true' ||
+                               responseData['needs_return'] == true ||
+                               responseData['needs_return'] == 'true');
+          final status = responseData['status'];
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(_getStatusMessage(newStatus)),
+          if (needsReturn && status == 'delivered_awaiting_return') {
+            // Entrega requer retorno
+            setState(() {
+              _currentStatus = 'delivered_awaiting_return';
+            });
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.warning_amber, color: Colors.white),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text('Produto entregue! Você precisa retornar ao ponto de origem.'),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            backgroundColor: Colors.green,
-          ),
-        );
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 4),
+              ),
+            );
+          } else {
+            // Entrega normal sem retorno
+            setState(() {
+              _currentStatus = newStatus;
+            });
 
-        // Se completou, voltar para tela anterior
-        if (newStatus == 'completed') {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.check_circle, color: Colors.white),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(_getStatusMessage(newStatus)),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } else if (newStatus == 'start_return' && responseData != null) {
+          setState(() {
+            _currentStatus = 'returning';
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.u_turn_left, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text('Retorno iniciado! Volte ao ponto de retirada.'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.blue,
+            ),
+          );
+        } else if (newStatus == 'complete_return' && responseData != null) {
+          setState(() {
+            _currentStatus = 'completed';
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text('Entrega finalizada com sucesso!'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // Voltar para tela anterior após 2 segundos
           await Future.delayed(const Duration(seconds: 2));
           if (mounted) {
-            Navigator.pop(context, true); // true indica que completou
+            Navigator.pop(context, true);
+          }
+        } else {
+          setState(() {
+            _currentStatus = newStatus;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(_getStatusMessage(newStatus)),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // Se completou, voltar para tela anterior
+          if (newStatus == 'completed') {
+            await Future.delayed(const Duration(seconds: 2));
+            if (mounted) {
+              Navigator.pop(context, true); // true indica que completou
+            }
           }
         }
       } else {
@@ -142,6 +248,10 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
         return 'Pedido Retirado';
       case 'delivered':
         return 'Pedido Entregue';
+      case 'delivered_awaiting_return':
+        return 'Aguardando Retorno';
+      case 'returning':
+        return 'Retornando ao Ponto de Origem';
       case 'completed':
         return 'Concluída';
       default:
@@ -159,6 +269,10 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
         return Colors.purple;
       case 'delivered':
         return Colors.green;
+      case 'delivered_awaiting_return':
+        return Colors.orange;
+      case 'returning':
+        return Colors.blue;
       case 'completed':
         return Colors.teal;
       default:
@@ -435,6 +549,57 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
               ),
             ),
 
+            // Aviso de Retorno (quando needs_return = true)
+            if (_delivery['needsReturn'] == true ||
+                _delivery['needs_return'] == true ||
+                _delivery['needsReturn'] == 'true' ||
+                _delivery['needs_return'] == 'true')
+              Container(
+                margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF4E6),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color(0xFFFFB020),
+                    width: 2,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Text(
+                      '⚠️',
+                      style: TextStyle(fontSize: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'ESTA ENTREGA POSSUI VOLTA',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFC77700),
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Você precisará retornar ao ponto de retirada após entregar',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF8B5A00),
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -472,20 +637,20 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Mostrar apenas local de RETIRADA quando status é "accepted" ou "arrived"
-                  if (_currentStatus == 'accepted' || _currentStatus == 'arrived')
+                  // Mostrar apenas local de RETIRADA quando status é "accepted", "arrived" ou "returning"
+                  if (_currentStatus == 'accepted' || _currentStatus == 'arrived' || _currentStatus == 'returning')
                     _buildLocationCard(
-                      title: 'Local de Retirada',
+                      title: _currentStatus == 'returning' ? 'Voltar ao Ponto de Retirada' : 'Local de Retirada',
                       icon: Icons.store,
-                      iconColor: Colors.blue,
+                      iconColor: _currentStatus == 'returning' ? Colors.orange : Colors.blue,
                       name: _delivery['companyName'] ?? 'Empresa',
                       address: _delivery['pickupAddress'] ?? '',
                       phone: _delivery['companyPhone'],
                       onNavigate: () => _showNavigationOptions(isPickup: true),
                     ),
 
-                  // Mostrar apenas local de ENTREGA quando status é "picked_up" ou "delivered"
-                  if (_currentStatus == 'picked_up' || _currentStatus == 'delivered')
+                  // Mostrar apenas local de ENTREGA quando status é "picked_up", "delivered" ou "delivered_awaiting_return"
+                  if (_currentStatus == 'picked_up' || _currentStatus == 'delivered' || _currentStatus == 'delivered_awaiting_return')
                     _buildLocationCard(
                       title: 'Local de Entrega',
                       icon: Icons.person,
@@ -785,6 +950,60 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
             icon: Icons.celebration,
             color: Colors.teal,
             onPressed: () => _updateStatus('completed', deliveryId),
+          ),
+        // Novo: Botão para iniciar retorno
+        if (_currentStatus == 'delivered_awaiting_return')
+          Column(
+            children: [
+              // Card informativo
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange, width: 2),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(Icons.warning_amber, color: Colors.orange, size: 40),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Produto Entregue!',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Você precisa retornar ao ponto de retirada para finalizar esta entrega.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _buildStatusButton(
+                label: 'Iniciar Retorno ao Ponto de Origem',
+                icon: Icons.u_turn_left,
+                color: Colors.blue,
+                onPressed: () => _updateStatus('start_return', deliveryId),
+              ),
+            ],
+          ),
+        // Novo: Botão para completar retorno
+        if (_currentStatus == 'returning')
+          _buildStatusButton(
+            label: 'Cheguei de Volta no Ponto de Origem',
+            icon: Icons.check_circle,
+            color: Colors.green,
+            onPressed: () => _updateStatus('complete_return', deliveryId),
           ),
       ],
     );

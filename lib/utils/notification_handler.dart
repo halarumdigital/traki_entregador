@@ -302,6 +302,10 @@ class NotificationHandler {
       return;
     }
 
+    debugPrint('🚚 ===== NOVA SOLICITAÇÃO DE ENTREGA =====');
+    debugPrint('📦 Dados recebidos no notification_handler: $data');
+    debugPrint('🔍 needs_return no handler: ${data['needs_return']}');
+    debugPrint('🔍 needsReturn no handler: ${data['needsReturn']}');
     debugPrint('🚚 Mostrando modal de nova solicitação de entrega');
     _isDeliveryDialogOpen = true;
 

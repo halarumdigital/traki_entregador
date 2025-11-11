@@ -24,22 +24,8 @@ Map<String, dynamic>? pendingNotificationData;
 // GlobalKey para acessar navigator de qualquer lugar
 final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
 
-@pragma('vm:entry-point')
-Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // Handler original para meta-request
-  if (message.data['push_type'].toString() == 'meta-request') {
-    AndroidIntent intent = AndroidIntent(
-      action: 'action_view',
-      package: 'com.fretus.driver',
-      componentName:
-          'com.fretus.driver.MainActivity',
-    );
-    await intent.launch();
-  }
-
-  // Log para outras notificações
-  debugPrint('📩 Notificação em background: ${message.data}');
-}
+// REMOVIDO: Handler de background agora está em notification_service.dart
+// O Firebase usa o handler importado na linha 97
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -129,6 +115,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       }
     });
 
+    // Verificar notificações ativas ao retomar app
+    _checkActiveNotificationsOnResume();
+
     super.initState();
   }
 
@@ -177,6 +166,43 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     if (Platform.isAndroid && state == AppLifecycleState.resumed) {
       stopBubbleHead();
       Workmanager().cancelAll();
+
+      // Verificar notificações ativas ao desbloquear
+      _checkActiveNotificationsOnResume();
+    }
+  }
+
+  Future<void> _checkActiveNotificationsOnResume() async {
+    try {
+      final startTime = DateTime.now();
+      debugPrint('🔍 Verificando notificação de entrega pendente ao retomar app...');
+
+      // Obter notificação de entrega pendente do arquivo
+      final pendingNotification = await NotificationService.getPendingDeliveryNotification();
+
+      final afterReadTime = DateTime.now();
+      final readDuration = afterReadTime.difference(startTime).inMilliseconds;
+      debugPrint('⏱️ Tempo de leitura do arquivo: ${readDuration}ms');
+
+      if (pendingNotification != null) {
+        debugPrint('🚚 Notificação de entrega pendente encontrada - abrindo modal');
+
+        final context = globalNavigatorKey.currentContext;
+        if (context != null && mounted) {
+          // Abrir modal imediatamente - sem delay!
+          final beforeHandleTime = DateTime.now();
+          NotificationHandler.handleNotification(context, pendingNotification);
+          final afterHandleTime = DateTime.now();
+          final handleDuration = afterHandleTime.difference(beforeHandleTime).inMilliseconds;
+          final totalDuration = afterHandleTime.difference(startTime).inMilliseconds;
+          debugPrint('⏱️ Tempo de abertura do modal: ${handleDuration}ms');
+          debugPrint('⏱️ Tempo total desde verificação: ${totalDuration}ms');
+        }
+      } else {
+        debugPrint('📭 Nenhuma notificação de entrega pendente');
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao verificar notificação pendente: $e');
     }
   }
 

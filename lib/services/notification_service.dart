@@ -4,12 +4,107 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 // Handler para notificações em background
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  debugPrint('📩 Notificação em background: ${message.messageId}');
+  debugPrint('📩 ===== NOTIFICAÇÃO EM BACKGROUND/LOCKED =====');
+  debugPrint('ID: ${message.messageId}');
+  debugPrint('Notification payload: ${message.notification != null ? "Sim (title: ${message.notification!.title})" : "Não - apenas data"}');
   debugPrint('Dados: ${message.data}');
+
+  // Para mensagens data-only (sem payload notification), Firebase NÃO cria notificação automaticamente
+  // Precisamos criar uma notificação local explicitamente
+
+  // Obter título e corpo dos dados
+  final title = message.data['title'] as String?;
+  final body = message.data['body'] as String?;
+
+  if (title != null && body != null) {
+    // Criar instância do plugin de notificações locais
+    final FlutterLocalNotificationsPlugin localNotifications = FlutterLocalNotificationsPlugin();
+
+    // Verificar se é notificação de entrega
+    final isDeliveryNotification = message.data['type'] == 'new_delivery' ||
+                                     message.data['type'] == 'new_delivery_request';
+
+    // 🔥 ARMAZENAR DADOS DA NOTIFICAÇÃO EM ARQUIVO PARA PROCESSAR AO DESBLOQUEAR
+    // Usando arquivo ao invés de SharedPreferences porque o handler roda em isolado separado
+    if (isDeliveryNotification) {
+      try {
+        // Usar path direto para evitar overhead - background handler precisa ser rápido
+        final directory = await getApplicationDocumentsDirectory();
+        final file = File('${directory.path}/pending_delivery_notification.json');
+        await file.writeAsString(jsonEncode(message.data));
+        debugPrint('💾 Notificação de entrega armazenada em arquivo para processar ao desbloquear');
+      } catch (e) {
+        debugPrint('❌ Erro ao armazenar notificação em arquivo: $e');
+      }
+    }
+
+    final androidDetails = isDeliveryNotification
+        ? AndroidNotificationDetails(
+            'delivery_requests_channel',
+            'Solicitações de Entrega',
+            channelDescription: 'Notificações de novas solicitações de entrega',
+            importance: Importance.max,
+            priority: Priority.max,
+            icon: '@mipmap/ic_launcher',
+            playSound: true,
+            sound: RawResourceAndroidNotificationSound('request_sound'),
+            enableVibration: true,
+            vibrationPattern: Int64List.fromList([0, 1000, 500, 1000, 500, 1000]),
+            category: AndroidNotificationCategory.call,
+            fullScreenIntent: true,
+            ongoing: true,
+            autoCancel: false,
+            visibility: NotificationVisibility.public,
+            channelShowBadge: true,
+            enableLights: true,
+            ledColor: Color.fromARGB(255, 255, 0, 0),
+            ledOnMs: 1000,
+            ledOffMs: 500,
+            timeoutAfter: message.data['acceptanceTimeout'] != null
+                ? int.tryParse(message.data['acceptanceTimeout'].toString())! * 1000
+                : 120000,
+          )
+        : AndroidNotificationDetails(
+            'high_importance_channel',
+            'Notificações Importantes',
+            channelDescription: 'Canal para notificações importantes',
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: '@mipmap/ic_launcher',
+            playSound: true,
+            enableVibration: true,
+          );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    final notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    // Criar notificação com payload contendo os dados da mensagem
+    await localNotifications.show(
+      DateTime.now().millisecondsSinceEpoch.remainder(2147483647),
+      title,
+      body,
+      notificationDetails,
+      payload: jsonEncode(message.data),
+    );
+
+    debugPrint('🔔 Notificação local criada em background: $title');
+  } else {
+    debugPrint('⚠️ Mensagem sem título/corpo - notificação não criada');
+  }
 }
 
 class NotificationService {
@@ -21,11 +116,25 @@ class NotificationService {
   static Function(Map<String, dynamic>)? _onNotificationTap;
   static Function(Map<String, dynamic>)? _onMessageReceived;
 
+  // Cache do path do arquivo de notificações para evitar chamadas lentas a getApplicationDocumentsDirectory()
+  static String? _cachedNotificationFilePath;
+
   // StreamController para eventos de cancelamento de entregas
   static final _deliveryCancelledController = StreamController<String>.broadcast();
 
   // Stream pública para ouvir eventos de cancelamento
   static Stream<String> get onDeliveryCancelled => _deliveryCancelledController.stream;
+
+  // Método helper para obter o path do arquivo de notificações (com cache)
+  static Future<String> _getNotificationFilePath() async {
+    if (_cachedNotificationFilePath != null) {
+      return _cachedNotificationFilePath!;
+    }
+
+    final directory = await getApplicationDocumentsDirectory();
+    _cachedNotificationFilePath = '${directory.path}/pending_delivery_notification.json';
+    return _cachedNotificationFilePath!;
+  }
 
   // Inicializar notificações
   static Future<void> initialize({
@@ -72,11 +181,23 @@ class NotificationService {
     await _localNotifications.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        if (response.payload != null && _onNotificationTap != null) {
+        if (response.payload != null) {
           debugPrint('👆 Notificação local tocada com payload: ${response.payload}');
           try {
             final data = jsonDecode(response.payload!);
-            _onNotificationTap!(data);
+
+            // Chamar onNotificationTap
+            if (_onNotificationTap != null) {
+              _onNotificationTap!(data);
+            }
+
+            // Se for notificação de entrega, processar também pelo onMessageReceived
+            final notificationType = data['type'] as String?;
+            if ((notificationType == 'new_delivery' || notificationType == 'new_delivery_request')
+                && _onMessageReceived != null) {
+              debugPrint('🚚 Processando entrega tocada via onMessageReceived');
+              _onMessageReceived!(data);
+            }
           } catch (e) {
             debugPrint('❌ Erro ao decodificar payload: $e');
           }
@@ -139,11 +260,36 @@ class NotificationService {
     // 8. Handler quando usuário toca na notificação (app em background/fechado)
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
 
-    // 9. Verificar se o app foi aberto por uma notificação
+    // 9. Verificar se o app foi aberto por uma notificação Firebase
     RemoteMessage? initialMessage = await _firebaseMessaging.getInitialMessage();
     if (initialMessage != null) {
-      debugPrint('🚀 App aberto por notificação');
+      debugPrint('🚀 App aberto por notificação Firebase');
       _handleNotificationTap(initialMessage);
+    }
+
+    // 10. Verificar se o app foi aberto por uma notificação LOCAL
+    final notificationAppLaunchDetails =
+        await _localNotifications.getNotificationAppLaunchDetails();
+    if (notificationAppLaunchDetails?.didNotificationLaunchApp == true) {
+      debugPrint('🚀 App aberto por notificação LOCAL');
+      final payload = notificationAppLaunchDetails!.notificationResponse?.payload;
+      if (payload != null && _onNotificationTap != null) {
+        debugPrint('📲 Processando payload da notificação local: $payload');
+        try {
+          final data = jsonDecode(payload);
+          _onNotificationTap!(data);
+
+          // Se for notificação de entrega, processar também pelo onMessageReceived
+          final notificationType = data['type'] as String?;
+          if ((notificationType == 'new_delivery' || notificationType == 'new_delivery_request')
+              && _onMessageReceived != null) {
+            debugPrint('🚚 Processando entrega via onMessageReceived');
+            _onMessageReceived!(data);
+          }
+        } catch (e) {
+          debugPrint('❌ Erro ao decodificar payload da notificação local: $e');
+        }
+      }
     }
 
     debugPrint('✅ Serviço de notificações inicializado com sucesso');
@@ -202,7 +348,18 @@ class NotificationService {
     debugPrint('Dados: ${message.data}');
 
     if (_onNotificationTap != null) {
+      debugPrint('📲 Chamando callback onNotificationTap com dados: ${message.data}');
       _onNotificationTap!(message.data);
+    } else {
+      debugPrint('⚠️ Callback onNotificationTap é null!');
+    }
+
+    // Se for notificação de entrega e temos onMessageReceived, processar também
+    final notificationType = message.data['type'] as String?;
+    if ((notificationType == 'new_delivery' || notificationType == 'new_delivery_request')
+        && _onMessageReceived != null) {
+      debugPrint('🚚 Processando entrega via onMessageReceived também');
+      _onMessageReceived!(message.data);
     }
   }
 
@@ -302,6 +459,76 @@ class NotificationService {
     final pendingNotifications =
         await _localNotifications.pendingNotificationRequests();
     return pendingNotifications.length;
+  }
+
+  // Obter notificação de entrega pendente armazenada quando telefone estava bloqueado
+  static Future<Map<String, dynamic>?> getPendingDeliveryNotification() async {
+    try {
+      // Usar método com cache para evitar chamadas lentas a getApplicationDocumentsDirectory()
+      final filePath = await _getNotificationFilePath();
+      final file = File(filePath);
+
+      if (await file.exists()) {
+        debugPrint('📦 Notificação de entrega pendente encontrada em arquivo');
+        final notificationJson = await file.readAsString();
+        final data = jsonDecode(notificationJson);
+
+        // Limpar após recuperar
+        await file.delete();
+        debugPrint('🗑️ Notificação pendente removida do arquivo');
+
+        return data;
+      } else {
+        debugPrint('📭 Nenhuma notificação de entrega pendente em arquivo');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao recuperar notificação pendente de arquivo: $e');
+      return null;
+    }
+  }
+
+  // Obter notificações ativas (exibidas na barra de notificação)
+  static Future<List<Map<String, dynamic>>> getActiveNotifications() async {
+    try {
+      final androidImplementation = _localNotifications
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+
+      if (androidImplementation != null) {
+        final activeNotifications = await androidImplementation.getActiveNotifications();
+
+        debugPrint('🔎 Total de notificações ativas no sistema: ${activeNotifications.length}');
+
+        List<Map<String, dynamic>> result = [];
+
+        for (var notification in activeNotifications) {
+          debugPrint('📋 Notificação ID: ${notification.id}, Title: ${notification.title}, Body: ${notification.body}, Payload: ${notification.payload != null ? "Sim" : "Não"}');
+
+          try {
+            // O payload contém os dados JSON da notificação
+            if (notification.payload != null && notification.payload!.isNotEmpty) {
+              final data = jsonDecode(notification.payload!);
+              result.add(data);
+              debugPrint('✅ Notificação ativa decodificada com sucesso: ${data['type']}');
+            } else {
+              debugPrint('⚠️ Notificação sem payload ou payload vazio');
+            }
+          } catch (e) {
+            debugPrint('❌ Erro ao decodificar payload da notificação ativa: $e');
+          }
+        }
+
+        debugPrint('📊 Total de notificações ativas com payload válido: ${result.length}');
+        return result;
+      }
+
+      debugPrint('⚠️ AndroidFlutterLocalNotificationsPlugin não disponível');
+      return [];
+    } catch (e) {
+      debugPrint('❌ Erro ao obter notificações ativas: $e');
+      return [];
+    }
   }
 
   // Limpar recursos (chamar ao fechar o app)

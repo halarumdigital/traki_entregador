@@ -47,7 +47,7 @@
               <meta-data
 android:name="com.google.firebase.messaging.default_notification_icon"
 android:resource="@drawable/logo" />
-            <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="ride_channel_1" />
+            <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="delivery_requests_channel" />
               <meta-data android:name="flutter_deeplinking_enabled" android:value="true" />
 <intent-filter android:autoVerify="true">
     <action android:name="android.intent.action.VIEW" />

@@ -502,4 +502,40 @@ class DeliveryService {
       return null;
     }
   }
+
+  // Obter estatísticas de comissão do motorista
+  static Future<Map<String, dynamic>?> getCommissionStats() async {
+    try {
+      debugPrint('📊 Buscando estatísticas de comissão...');
+
+      final token = await LocalStorageService.getAccessToken();
+      if (token == null) {
+        debugPrint('❌ Token não encontrado');
+        return null;
+      }
+
+      final response = await http.get(
+        Uri.parse('${url}api/v1/driver/commission-stats'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      debugPrint('📥 Status Code: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
+          debugPrint('✅ Estatísticas carregadas com sucesso');
+          return jsonResponse['data'];
+        }
+      }
+
+      debugPrint('⚠️ Não foi possível carregar estatísticas');
+      return null;
+    } catch (e) {
+      debugPrint('❌ Erro ao buscar estatísticas: $e');
+      return null;
+    }
+  }
 }

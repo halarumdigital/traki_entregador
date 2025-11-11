@@ -25,6 +25,8 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
   Timer? _locationTimer;
   Map<String, dynamic>? _currentDelivery;
   bool _isLoadingDelivery = false;
+  Map<String, dynamic>? _commissionStats;
+  bool _isLoadingStats = false;
 
   @override
   void initState() {
@@ -32,6 +34,7 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _loadDriverProfile();
     _loadCurrentDelivery();
+    _loadCommissionStats();
     _startLocationUpdates();
   }
 
@@ -159,6 +162,37 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
       if (mounted) {
         setState(() {
           _isLoadingDelivery = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadCommissionStats() async {
+    setState(() {
+      _isLoadingStats = true;
+    });
+
+    try {
+      debugPrint('📊 Buscando estatísticas de comissão...');
+      final stats = await DeliveryService.getCommissionStats();
+
+      if (mounted) {
+        setState(() {
+          _commissionStats = stats;
+        });
+
+        if (stats != null) {
+          debugPrint('✅ Estatísticas carregadas: ${stats['currentMonthDeliveries']} entregas este mês');
+        } else {
+          debugPrint('ℹ️ Não foi possível carregar estatísticas');
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao buscar estatísticas: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingStats = false;
         });
       }
     }
@@ -586,6 +620,13 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
           if (_currentDelivery != null)
             const SizedBox(height: 20),
 
+          // Cards informativos de estatísticas
+          if (_commissionStats != null)
+            _buildStatisticsCards(),
+
+          if (_commissionStats != null)
+            const SizedBox(height: 20),
+
           // Toggle Online/Offline
           const Center(
             child: OnlineOfflineToggle(),
@@ -775,6 +816,210 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: textColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatisticsCards() {
+    final int currentMonthDeliveries = _commissionStats?['currentMonthDeliveries'] ?? 0;
+    final int currentWeekDeliveries = _commissionStats?['currentWeekDeliveries'] ?? 0;
+    final double currentCommission = (_commissionStats?['currentCommissionPercentage'] ?? 0.0).toDouble();
+    final Map<String, dynamic>? nextTier = _commissionStats?['nextTier'];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: [
+          // Primeira linha - Entregas da semana e do mês
+          Row(
+            children: [
+              // Card de entregas da semana
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.purple.shade400, Colors.purple.shade600],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.purple.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.calendar_today,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        '$currentWeekDeliveries',
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Entregas\nesta semana',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.white,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Card de entregas do mês
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.blue.shade400, Colors.blue.shade600],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.blue.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.local_shipping,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        '$currentMonthDeliveries',
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Entregas\neste mês',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.white,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Segunda linha - Card de comissão
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.green.shade400, Colors.green.shade600],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.attach_money,
+                  color: Colors.white,
+                  size: 32,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${currentCommission.toStringAsFixed(0)}%',
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        nextTier != null
+                            ? 'Comissão atual'
+                            : 'Comissão máxima!',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (nextTier != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Faltam ${nextTier['deliveriesNeeded']}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'para ${nextTier['commissionPercentage'].toStringAsFixed(0)}%',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],

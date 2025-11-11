@@ -21,31 +21,68 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
   bool _isProcessing = false;
   final AudioPlayer _audioPlayer = AudioPlayer();
   StreamSubscription<String>? _cancelSubscription;
+  late final String? _requestId;
 
   @override
   void initState() {
     super.initState();
+    _requestId = _resolveRequestId(widget.data);
+    final cancelledBeforeInit = _requestId != null &&
+        NotificationService.consumePendingCancellation(_requestId!);
+
+    if (cancelledBeforeInit) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _handleDeliveryCancelled();
+      });
+      return;
+    }
+
     _startCountdown();
     _startNotificationSound();
     _listenForCancellation();
   }
 
+  String? _resolveRequestId(Map<String, dynamic> data) {
+    final candidates = [
+      data['deliveryId'],
+      data['delivery_id'],
+      data['requestId'],
+      data['request_id'],
+      data['id'],
+    ];
+
+    for (final value in candidates) {
+      if (value == null) continue;
+      final parsed = value.toString();
+      if (parsed.isNotEmpty) {
+        return parsed;
+      }
+    }
+    return null;
+  }
+
   /// Escutar eventos de cancelamento de entregas
   void _listenForCancellation() {
-    debugPrint('👂 Iniciando escuta de cancelamentos para entrega: ${widget.data['deliveryId'] ?? widget.data['requestId']}');
+    debugPrint('[Cancelamento] Escutando entrega: ${_requestId ?? 'desconhecido'}');
 
     _cancelSubscription = NotificationService.onDeliveryCancelled.listen((cancelledRequestId) {
-      final currentRequestId = widget.data['deliveryId'] ?? widget.data['requestId'];
+      final currentRequestId = _requestId;
 
-      debugPrint('🔔 Evento de cancelamento recebido para requestId: $cancelledRequestId');
-      debugPrint('📋 RequestId atual do modal: $currentRequestId');
+      debugPrint('[Cancelamento] Evento recebido para requestId: $cancelledRequestId');
+      debugPrint('[Cancelamento] RequestId atual do modal: $currentRequestId');
 
-      // Verificar se é a entrega atual
+      if (currentRequestId == null) {
+        debugPrint('[Cancelamento] RequestId do modal indefinido. Fechando por segurança.');
+        _handleDeliveryCancelled();
+        return;
+      }
+
       if (cancelledRequestId == currentRequestId) {
-        debugPrint('🚫 Esta entrega foi cancelada! Fechando modal...');
+        NotificationService.consumePendingCancellation(currentRequestId);
+        debugPrint('[Cancelamento] IDs coincidem. Fechando modal.');
         _handleDeliveryCancelled();
       } else {
-        debugPrint('ℹ️ Cancelamento não é para esta entrega (ID diferente)');
+        debugPrint('[Cancelamento] Evento não corresponde a esta entrega.');
       }
     });
   }
@@ -167,95 +204,86 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
 
   Future<void> _acceptDelivery() async {
     if (_isProcessing) {
-      debugPrint('⚠️ Já está processando uma ação');
+      debugPrint('[Entrega] Já existe uma ação em andamento');
       return;
     }
 
-    debugPrint('🔵 BOTÃO ACEITAR CLICADO');
-    debugPrint('📋 DeliveryId: ${widget.data['deliveryId']}');
-    debugPrint('📋 RequestId: ${widget.data['requestId']}');
-    debugPrint('📋 Request Number: ${widget.data['requestNumber']}');
-    debugPrint('📋 Dados completos: ${widget.data}');
+    debugPrint('[Entrega] Botão ACEITAR clicado');
+    debugPrint('[Entrega] RequestId resolvido: $_requestId');
+    debugPrint('[Entrega] Request Number: ${widget.data['requestNumber']}');
+    debugPrint('[Entrega] Payload completo: ${widget.data}');
 
     setState(() {
       _isProcessing = true;
     });
 
     try {
-      // Para entregas relançadas, o backend envia 'requestId' ao invés de 'deliveryId'
-      final deliveryId = widget.data['deliveryId'] ?? widget.data['requestId'];
-      debugPrint('✅ Chamando DeliveryService.acceptDelivery com ID: $deliveryId');
+      final deliveryId = _requestId;
+      if (deliveryId == null) {
+        debugPrint('[Entrega] RequestId não encontrado para aceitar a entrega.');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Não foi possível identificar esta entrega. Tente novamente.'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
 
-      final result = await DeliveryService.acceptDelivery(
-        deliveryId,
-      );
+      debugPrint('[Entrega] Chamando DeliveryService.acceptDelivery com ID: $deliveryId');
+      final result = await DeliveryService.acceptDelivery(deliveryId);
 
       if (!mounted) return;
 
       if (result != null) {
-        // Verificar se é erro de expiração
         if (result['error'] == 'expired') {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: const [
-                  Icon(Icons.timer_off, color: Colors.white),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text('Esta entrega já expirou e não está mais disponível'),
-                  ),
-                ],
-              ),
+            const SnackBar(
+              content: Text('Esta entrega já expirou e não está mais disponível'),
               backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 4),
+              duration: Duration(seconds: 4),
             ),
           );
           return;
         }
 
-        debugPrint('✅ Entrega aceita! Buscando dados atualizados...');
-
-        // Buscar dados atualizados do backend
+        debugPrint('[Entrega] Entrega aceita! Buscando dados atualizados...');
         final updatedDelivery = await DeliveryService.getCurrentDelivery();
+        debugPrint('[Entrega] Dados atualizados: $updatedDelivery');
 
-        if (!mounted) return;
+        if (mounted) {
+          Navigator.pop(context);
 
-        Navigator.pop(context);
+          final deliveryPayload = updatedDelivery ?? result;
+          if (deliveryPayload != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ActiveDeliveryScreen(delivery: deliveryPayload),
+              ),
+            );
+          }
 
-        // Navigate to active delivery screen com dados atualizados
-        if (updatedDelivery != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ActiveDeliveryScreen(delivery: updatedDelivery),
-            ),
-          );
-        } else {
-          // Fallback: usar dados do accept se não conseguir buscar atualizados
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ActiveDeliveryScreen(delivery: result),
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: const [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text('Entrega aceita! Acompanhe em Entrega em andamento.'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
             ),
           );
         }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: const [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text('Entrega aceita com sucesso!'),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-          ),
-        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -267,7 +295,7 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
         Navigator.pop(context);
       }
     } catch (e) {
-      debugPrint('❌ Erro ao aceitar entrega: $e');
+      debugPrint('Erro ao aceitar entrega: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -293,11 +321,22 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
     });
 
     try {
-      debugPrint('❌ Rejeitando entrega: ${widget.data['deliveryId']}');
+      final deliveryId = _requestId;
+      if (deliveryId == null) {
+        debugPrint('[Entrega] RequestId não encontrado para rejeitar a entrega.');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Não foi possível identificar esta entrega. Tente novamente.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
 
-      final success = await DeliveryService.rejectDelivery(
-        widget.data['deliveryId'],
-      );
+      debugPrint('[Entrega] Rejeitando entrega: $deliveryId');
+      final success = await DeliveryService.rejectDelivery(deliveryId);
 
       if (!mounted) return;
 
@@ -312,9 +351,15 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
         );
       }
     } catch (e) {
-      debugPrint('❌ Erro ao rejeitar entrega: $e');
+      debugPrint('Erro ao rejeitar entrega: $e');
       if (mounted) {
         Navigator.pop(context);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
       }
     }
   }

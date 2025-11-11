@@ -125,6 +125,102 @@ class NotificationService {
   // Stream pública para ouvir eventos de cancelamento
   static Stream<String> get onDeliveryCancelled => _deliveryCancelledController.stream;
 
+  // Guarda IDs de notificações locais associadas às entregas
+  static final Map<String, int> _deliveryNotificationIds = {};
+  static final Set<String> _pendingCancelledRequests = <String>{};
+
+  static String? _extractRequestId(Map<String, dynamic> data) {
+    const candidateKeys = [
+      'requestId',
+      'request_id',
+      'deliveryId',
+      'delivery_id',
+      'id',
+    ];
+
+    for (final key in candidateKeys) {
+      final value = data[key];
+      if (value == null) continue;
+      final parsed = value.toString();
+      if (parsed.isNotEmpty) {
+        return parsed;
+      }
+    }
+    return null;
+  }
+
+  static Future<void> _cancelDeliveryNotification(String requestId) async {
+    try {
+      final cachedId = _deliveryNotificationIds.remove(requestId);
+      if (cachedId != null) {
+        await _localNotifications.cancel(cachedId);
+        debugPrint('�Y"" Notifica��o local vinculada ao requestId $requestId cancelada (cache)');
+        return;
+      }
+
+      final androidImplementation = _localNotifications
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      if (androidImplementation != null) {
+        final activeNotifications = await androidImplementation.getActiveNotifications();
+        for (final activeNotification in activeNotifications) {
+          final payload = activeNotification.payload;
+          if (payload == null) continue;
+          try {
+            final payloadData = Map<String, dynamic>.from(jsonDecode(payload));
+            final payloadRequestId = _extractRequestId(payloadData);
+            if (payloadRequestId == requestId) {
+              await androidImplementation.cancel(activeNotification.id ?? 0);
+              debugPrint('�Y"" Notifica��o ativa removida do sistema para requestId $requestId');
+              return;
+            }
+          } catch (e) {
+            debugPrint('�?O Erro ao analisar payload da notifica��o ativa: $e');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('�?O Nǜo foi poss��vel cancelar a notifica��o da entrega $requestId: $e');
+    }
+  }
+
+  static Future<void> _clearPendingDeliveryNotification({String? requestId}) async {
+    try {
+      final filePath = await _getNotificationFilePath();
+      final file = File(filePath);
+      if (!await file.exists()) {
+        return;
+      }
+
+      if (requestId == null) {
+        await file.delete();
+        debugPrint('�Y"� Notifica��o pendente removida (requestId desconhecido).');
+        return;
+      }
+
+      final rawContent = await file.readAsString();
+      final data = jsonDecode(rawContent);
+      if (data is Map<String, dynamic>) {
+        final storedRequestId = _extractRequestId(Map<String, dynamic>.from(data));
+        if (storedRequestId == null || storedRequestId == requestId) {
+          await file.delete();
+          debugPrint('�Y"� Notifica��o pendente removida para requestId $requestId');
+        } else {
+          debugPrint(
+              '�s���? Arquivo pendente encontrado mas pertencente a outro requestId ($storedRequestId)');
+        }
+      } else {
+        await file.delete();
+        debugPrint('�YZ� Conte��do inesperado no arquivo pendente. Arquivo removido.');
+      }
+    } catch (e) {
+      debugPrint('�?O Erro ao limpar arquivo de notifica��o pendente: $e');
+    }
+  }
+
+  static bool consumePendingCancellation(String requestId) {
+    return _pendingCancelledRequests.remove(requestId);
+  }
+
   // Método helper para obter o path do arquivo de notificações (com cache)
   static Future<String> _getNotificationFilePath() async {
     if (_cachedNotificationFilePath != null) {
@@ -306,7 +402,8 @@ class NotificationService {
     debugPrint('Corpo: ${message.notification?.body}');
     debugPrint('Dados: ${message.data}');
 
-    final notificationType = message.data['type'] as String?;
+    final notificationData = Map<String, dynamic>.from(message.data);
+    final notificationType = notificationData['type'] as String?;
 
     // Se for notificação de entrega, processar imediatamente
     if (notificationType == 'new_delivery' || notificationType == 'new_delivery_request') {
@@ -322,18 +419,27 @@ class NotificationService {
     // Se for notificação de cancelamento de entrega
     else if (notificationType == 'DELIVERY_CANCELLED' || notificationType == 'delivery_cancelled') {
       debugPrint('🚫 ===== ENTREGA CANCELADA =====');
-      debugPrint('RequestId: ${message.data['requestId']}');
-      debugPrint('Mensagem: ${message.data['message']}');
+      debugPrint('RequestId: ${notificationData['requestId'] ?? notificationData['request_id']}');
+      debugPrint('Mensagem: ${notificationData['message']}');
 
       // Emitir evento para fechar modal
-      final requestId = message.data['requestId'] as String?;
+      final requestId = _extractRequestId(notificationData);
       if (requestId != null) {
         _deliveryCancelledController.add(requestId);
         debugPrint('✅ Evento de cancelamento emitido para requestId: $requestId');
+        _pendingCancelledRequests.add(requestId);
+        await _cancelDeliveryNotification(requestId);
+        await _clearPendingDeliveryNotification(requestId: requestId);
+      } else {
+        debugPrint('⚠️ RequestId nǔo encontrado na notificação de cancelamento.');
       }
 
       // Mostrar notificação local informando o cancelamento
       await _showLocalNotification(message);
+      if (_onMessageReceived != null) {
+        debugPrint('📢 Encaminhando cancelamento para NotificationHandler');
+        _onMessageReceived!(notificationData);
+      }
     }
     // Para outros tipos de notificação
     else {
@@ -437,13 +543,24 @@ class NotificationService {
       iOS: iosDetails,
     );
 
+    final notificationId = DateTime.now().millisecondsSinceEpoch.remainder(2147483647);
+
     await _localNotifications.show(
-      DateTime.now().millisecondsSinceEpoch.remainder(2147483647), // ID dentro do range de 32-bit
+      notificationId, // ID dentro do range de 32-bit
       title,
       body,
       notificationDetails,
       payload: jsonEncode(message.data),
     );
+
+    final notificationType = message.data['type'] as String?;
+    if (notificationType == 'new_delivery' || notificationType == 'new_delivery_request') {
+      final requestId = _extractRequestId(Map<String, dynamic>.from(message.data));
+      if (requestId != null) {
+        _deliveryNotificationIds[requestId] = notificationId;
+        debugPrint('?Y"? Vinculando notifica??o local $notificationId ao requestId $requestId');
+      }
+    }
 
     debugPrint('🔔 Notificação local exibida: $title');
   }

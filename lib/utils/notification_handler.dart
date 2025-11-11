@@ -4,6 +4,7 @@ import 'package:flutter_driver/pages/login/login.dart';
 import 'package:flutter_driver/styles/styles.dart';
 import 'package:flutter_driver/widgets/delivery_request_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/notification_service.dart';
 
 class NotificationHandler {
   // Flag para garantir que apenas um modal de entrega esteja aberto por vez
@@ -324,6 +325,16 @@ class NotificationHandler {
 
     final requestId = data['requestId'] as String?;
     final message = data['message'] as String? ?? 'A entrega foi cancelada pelo administrador.';
+
+    // Se houver um modal de nova entrega aberto, fechá-lo imediatamente
+    if (_isDeliveryDialogOpen) {
+      debugPrint('ℹ️ Fechando modal de solicitação antes de exibir alerta de cancelamento');
+      Navigator.of(context, rootNavigator: true).maybePop();
+      _isDeliveryDialogOpen = false;
+      if (requestId != null) {
+        NotificationService.consumePendingCancellation(requestId);
+      }
+    }
 
     // Mostrar alerta ao motorista
     showDialog(

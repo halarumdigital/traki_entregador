@@ -50,7 +50,9 @@
       "Bash(timeout 60 echo:*)",
       "Bash(copy /b \"lib\\pages\\navDrawer\\nav_drawer.dart\" +,,)",
       "Bash(netstat:*)",
-      "Bash(cmd /c \"tasklist | findstr dart.exe\")"
+      "Bash(cmd /c \"tasklist | findstr dart.exe\")",
+      "Bash(copy /b \"lib\\pages\\home_simple.dart\" +,,)",
+      "Bash(cmd /c \"copy /b lib\\pages\\home_simple.dart +,,\")"
     ],
     "deny": [],
     "ask": []

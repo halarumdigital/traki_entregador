@@ -177,6 +177,10 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
       debugPrint('📊 Buscando estatísticas de comissão...');
       final stats = await DeliveryService.getCommissionStats();
 
+      debugPrint('🔍 Stats recebidas: $stats');
+      debugPrint('🔍 Stats tipo: ${stats.runtimeType}');
+      debugPrint('🔍 Stats keys: ${stats?.keys}');
+
       if (mounted) {
         setState(() {
           _commissionStats = stats;
@@ -184,6 +188,7 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
 
         if (stats != null) {
           debugPrint('✅ Estatísticas carregadas: ${stats['currentMonthDeliveries']} entregas este mês');
+          debugPrint('✅ _commissionStats setado: $_commissionStats');
         } else {
           debugPrint('ℹ️ Não foi possível carregar estatísticas');
         }
@@ -216,6 +221,10 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     var media = MediaQuery.of(context).size;
+
+    // Debug: Verificar estado das variáveis
+    debugPrint('🔧 BUILD - _commissionStats: $_commissionStats');
+    debugPrint('🔧 BUILD - _currentDelivery: $_currentDelivery');
 
     return Scaffold(
       backgroundColor: page,
@@ -644,45 +653,54 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
       body: RefreshIndicator(
         onRefresh: _refreshData,
         color: buttonColor,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight,
+                ),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 20),
 
-              // Indicador de entrega ativa
-              if (_currentDelivery != null)
-                _buildActiveDeliveryBanner(),
+                    // Indicador de entrega ativa
+                    if (_currentDelivery != null)
+                      _buildActiveDeliveryBanner(),
 
-              if (_currentDelivery != null)
-                const SizedBox(height: 20),
+                    if (_currentDelivery != null)
+                      const SizedBox(height: 20),
 
-              // Cards informativos de estatísticas
-              if (_commissionStats != null)
-                _buildStatisticsCards(),
+                    // Cards informativos de estatísticas
+                    if (_commissionStats != null)
+                      _buildStatisticsCards(),
 
-              if (_commissionStats != null)
-                const SizedBox(height: 20),
+                    if (_commissionStats != null)
+                      const SizedBox(height: 20),
 
-              // Toggle Online/Offline
-              const Center(
-                child: OnlineOfflineToggle(),
-              ),
-              const SizedBox(height: 40),
-              // Texto informativo
-              Center(
-                child: Text(
-                  'Arraste para baixo para atualizar\n\nUse o toggle acima para ficar\nOnline ou Offline',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 16,
-                  ),
+                    // Toggle Online/Offline
+                    const Center(
+                      child: OnlineOfflineToggle(),
+                    ),
+                    const SizedBox(height: 40),
+                    // Texto informativo
+                    Center(
+                      child: Text(
+                        'Arraste para baixo para atualizar\n\nUse o toggle acima para ficar\nOnline ou Offline',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+                  ],
                 ),
               ),
-              const SizedBox(height: 40),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

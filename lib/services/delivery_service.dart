@@ -522,12 +522,18 @@ class DeliveryService {
       );
 
       debugPrint('📥 Status Code: ${response.statusCode}');
+      debugPrint('📥 Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(response.body);
+        debugPrint('📋 Response JSON: $jsonResponse');
+        debugPrint('📋 Data: ${jsonResponse['data']}');
+
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
           debugPrint('✅ Estatísticas carregadas com sucesso');
-          return jsonResponse['data'];
+          final data = jsonResponse['data'];
+          debugPrint('🔍 Keys do data: ${data.keys}');
+          return data;
         }
       }
 

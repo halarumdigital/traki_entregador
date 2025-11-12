@@ -576,4 +576,59 @@ class DeliveryService {
       return [];
     }
   }
+
+  // Avaliar empresa após entrega
+  static Future<Map<String, dynamic>?> rateCompany(String deliveryId, int rating) async {
+    try {
+      debugPrint('⭐ Avaliando empresa: $deliveryId com $rating estrelas');
+
+      final token = await LocalStorageService.getAccessToken();
+      if (token == null) {
+        debugPrint('❌ Token não encontrado');
+        return null;
+      }
+
+      debugPrint('🔑 Token obtido: ${token.substring(0, 20)}...');
+
+      final endpoint = '${url}api/v1/driver/deliveries/$deliveryId/rate';
+      debugPrint('📡 Chamando endpoint: $endpoint');
+      debugPrint('📋 Headers: Authorization: Bearer ${token.substring(0, 20)}...');
+      debugPrint('📊 Rating: $rating');
+
+      final response = await http.post(
+        Uri.parse(endpoint),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'rating': rating,
+        }),
+      );
+
+      debugPrint('📥 Status Code: ${response.statusCode}');
+      debugPrint('📦 Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        debugPrint('✅ Avaliação registrada com sucesso');
+        if (jsonResponse['success'] == true) {
+          return jsonResponse['data'];
+        }
+      } else if (response.statusCode == 401) {
+        debugPrint('❌ ERRO DE AUTENTICAÇÃO - Token inválido ou expirado');
+        debugPrint('❌ Response: ${response.body}');
+      } else if (response.statusCode == 400) {
+        debugPrint('❌ ERRO DE VALIDAÇÃO');
+        debugPrint('❌ Response: ${response.body}');
+      } else {
+        debugPrint('❌ Status code diferente de 200: ${response.statusCode}');
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('❌ Erro ao avaliar empresa: $e');
+      return null;
+    }
+  }
 }

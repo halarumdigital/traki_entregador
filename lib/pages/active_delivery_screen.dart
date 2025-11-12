@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/delivery_service.dart';
 import '../styles/styles.dart';
+import 'rate_company_screen.dart';
 
 class ActiveDeliveryScreen extends StatefulWidget {
   final Map<String, dynamic> delivery;
@@ -163,10 +164,22 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
             ),
           );
 
-          // Voltar para tela anterior após 2 segundos
-          await Future.delayed(const Duration(seconds: 2));
+          // Mostrar tela de avaliação da empresa
+          await Future.delayed(const Duration(seconds: 1));
           if (mounted) {
-            Navigator.pop(context, true);
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => RateCompanyScreen(
+                  deliveryId: deliveryId,
+                  companyName: _delivery['companyName'] ?? 'Empresa',
+                ),
+              ),
+            );
+
+            if (mounted) {
+              Navigator.pop(context, true);
+            }
           }
         } else {
           setState(() {
@@ -188,11 +201,23 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
             ),
           );
 
-          // Se completou, voltar para tela anterior
+          // Se completou, mostrar tela de avaliação
           if (newStatus == 'completed') {
-            await Future.delayed(const Duration(seconds: 2));
+            await Future.delayed(const Duration(seconds: 1));
             if (mounted) {
-              Navigator.pop(context, true); // true indica que completou
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => RateCompanyScreen(
+                    deliveryId: deliveryId,
+                    companyName: _delivery['companyName'] ?? 'Empresa',
+                  ),
+                ),
+              );
+
+              if (mounted) {
+                Navigator.pop(context, true); // true indica que completou
+              }
             }
           }
         }

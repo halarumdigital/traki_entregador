@@ -5,10 +5,14 @@ import 'package:flutter_driver/styles/styles.dart';
 import 'package:flutter_driver/widgets/delivery_request_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/notification_service.dart';
+import '../services/delivery_service.dart';
 
 class NotificationHandler {
   // Flag para garantir que apenas um modal de entrega esteja aberto por vez
   static bool _isDeliveryDialogOpen = false;
+
+  // Set para rastrear IDs de entregas que estão sendo processadas
+  static final Set<String> _processingDeliveries = {};
 
   static void handleNotification(
     BuildContext context,
@@ -291,21 +295,58 @@ class NotificationHandler {
     );
   }
 
+  // Extrair requestId dos dados
+  static String? _extractRequestId(Map<String, dynamic> data) {
+    final candidates = [
+      data['deliveryId'],
+      data['delivery_id'],
+      data['requestId'],
+      data['request_id'],
+      data['id'],
+    ];
+
+    for (final value in candidates) {
+      if (value == null) continue;
+      final parsed = value.toString();
+      if (parsed.isNotEmpty) {
+        return parsed;
+      }
+    }
+    return null;
+  }
+
   // Nova solicitação de entrega → Mostrar modal
   static void _handleNewDeliveryRequest(
     BuildContext context,
     Map<String, dynamic> data,
   ) {
+    debugPrint('🚚 ===== NOVA SOLICITAÇÃO DE ENTREGA =====');
+    debugPrint('📦 Dados recebidos no notification_handler: $data');
+    debugPrint('🔍 needs_return no handler: ${data['needs_return']}');
+    debugPrint('🔍 needsReturn no handler: ${data['needsReturn']}');
+
+    // Extrair requestId
+    final requestId = _extractRequestId(data);
+    if (requestId == null) {
+      debugPrint('❌ RequestId não encontrado na notificação. Ignorando.');
+      return;
+    }
+
     // Verificar se já existe um modal aberto
     if (_isDeliveryDialogOpen) {
       debugPrint('⚠️ Modal de entrega já está aberto. Ignorando nova solicitação.');
       return;
     }
 
-    debugPrint('🚚 ===== NOVA SOLICITAÇÃO DE ENTREGA =====');
-    debugPrint('📦 Dados recebidos no notification_handler: $data');
-    debugPrint('🔍 needs_return no handler: ${data['needs_return']}');
-    debugPrint('🔍 needsReturn no handler: ${data['needsReturn']}');
+    // Verificar se esta entrega já está sendo processada
+    if (_processingDeliveries.contains(requestId)) {
+      debugPrint('⚠️ Entrega $requestId já está sendo processada. Ignorando duplicata.');
+      return;
+    }
+
+    // Marcar como sendo processada
+    _processingDeliveries.add(requestId);
+
     debugPrint('🚚 Mostrando modal de nova solicitação de entrega');
     _isDeliveryDialogOpen = true;
 
@@ -316,6 +357,7 @@ class NotificationHandler {
     ).then((_) {
       // Quando o modal fechar, marcar como disponível
       _isDeliveryDialogOpen = false;
+      _processingDeliveries.remove(requestId);
       debugPrint('✅ Modal de entrega fechado');
     });
   }

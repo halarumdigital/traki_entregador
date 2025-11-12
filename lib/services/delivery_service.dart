@@ -40,15 +40,40 @@ class DeliveryService {
     }
   }
 
-  // Obter entrega em andamento
-  static Future<Map<String, dynamic>?> getCurrentDelivery() async {
+  // Mapear uma entrega individual de snake_case para camelCase
+  static Map<String, dynamic> _mapDeliveryData(Map<String, dynamic> data) {
+    return {
+      'requestId': data['id'],
+      'requestNumber': data['request_number'],
+      'companyName': data['company_name'],
+      'companyPhone': data['company_phone'],
+      'customerName': data['customer_name'],
+      'customerWhatsapp': data['customer_whatsapp'],
+      'deliveryReference': data['delivery_reference'],
+      'pickupAddress': data['pick_address'],
+      'pickupLat': data['pick_lat'],
+      'pickupLng': data['pick_lng'],
+      'deliveryAddress': data['drop_address'],
+      'deliveryLat': data['drop_lat'],
+      'deliveryLng': data['drop_lng'],
+      'distance': data['total_distance']?.toString(),
+      'estimatedTime': data['estimated_time']?.toString() ?? data['total_time']?.toString(),
+      'driverAmount': data['driver_amount']?.toString() ?? data['request_eta_amount']?.toString(),
+      'isTripStart': data['is_trip_start'] ?? false,
+      'needsReturn': data['needs_return'] ?? false,
+      'deliveredAt': data['delivered_at'],
+    };
+  }
+
+  // Obter TODAS as entregas ativas do motorista (NOVO - suporta múltiplas entregas)
+  static Future<List<Map<String, dynamic>>> getCurrentDeliveries() async {
     try {
-      debugPrint('📦 Buscando entrega atual...');
+      debugPrint('📦 ===== BUSCANDO TODAS AS ENTREGAS ATIVAS =====');
 
       final token = await LocalStorageService.getAccessToken();
       if (token == null) {
         debugPrint('❌ Token não encontrado');
-        return null;
+        return [];
       }
 
       final response = await http.get(
@@ -66,35 +91,28 @@ class DeliveryService {
         debugPrint('📋 Response JSON: $jsonResponse');
 
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
-          debugPrint('✅ Entrega atual carregada');
+          final data = jsonResponse['data'];
 
-          // Mapear campos snake_case para camelCase para compatibilidade com ActiveDeliveryScreen
-          final data = jsonResponse['data'] as Map<String, dynamic>;
+          // Verificar se data é um array ou um objeto único (para compatibilidade)
+          List<Map<String, dynamic>> deliveries = [];
 
-          debugPrint('🔍 Mapeando customerWhatsapp: ${data['customer_whatsapp']}');
-          debugPrint('🔍 Mapeando deliveryReference: ${data['delivery_reference']}');
+          if (data is List) {
+            // Nova API: retorna array
+            debugPrint('✅ API retornou array com ${data.length} entrega(s)');
+            deliveries = data.map((item) => _mapDeliveryData(item as Map<String, dynamic>)).toList();
+          } else if (data is Map<String, dynamic>) {
+            // API antiga: retorna objeto único (compatibilidade)
+            debugPrint('⚠️ API retornou objeto único (formato antigo)');
+            deliveries = [_mapDeliveryData(data)];
+          }
 
-          final mappedData = {
-            'requestId': data['id'],
-            'requestNumber': data['request_number'],
-            'companyName': data['company_name'],
-            'companyPhone': data['company_phone'],
-            'customerName': data['customer_name'],
-            'customerWhatsapp': data['customer_whatsapp'],
-            'deliveryReference': data['delivery_reference'],
-            'pickupAddress': data['pick_address'],
-            'pickupLat': data['pick_lat'],
-            'pickupLng': data['pick_lng'],
-            'deliveryAddress': data['drop_address'],
-            'deliveryLat': data['drop_lat'],
-            'deliveryLng': data['drop_lng'],
-            'distance': data['total_distance']?.toString(),
-            'estimatedTime': data['estimated_time']?.toString() ?? data['total_time']?.toString(),
-            'driverAmount': data['driver_amount']?.toString() ?? data['request_eta_amount']?.toString(),
-          };
+          debugPrint('📊 TOTAL DE ENTREGAS ATIVAS: ${deliveries.length}');
+          for (var i = 0; i < deliveries.length; i++) {
+            debugPrint('  [$i] ${deliveries[i]['requestNumber']} - ${deliveries[i]['customerName']}');
+            debugPrint('      Status: Retirada=${deliveries[i]['isTripStart']}');
+          }
 
-          debugPrint('📤 Retornando objeto mapeado: $mappedData');
-          return mappedData;
+          return deliveries;
         } else {
           debugPrint('⚠️ Backend retornou success=false ou data=null');
         }
@@ -102,10 +120,94 @@ class DeliveryService {
         debugPrint('❌ Status code diferente de 200: ${response.statusCode}');
       }
 
-      return null;
+      return [];
+    } catch (e) {
+      debugPrint('❌ Erro ao buscar entregas ativas: $e');
+      return [];
+    }
+  }
+
+  // Obter entrega em andamento (compatibilidade - retorna apenas a primeira)
+  static Future<Map<String, dynamic>?> getCurrentDelivery() async {
+    try {
+      debugPrint('📦 Buscando entrega atual (primeira da lista)...');
+
+      final deliveries = await getCurrentDeliveries();
+
+      if (deliveries.isEmpty) {
+        debugPrint('⚠️ Nenhuma entrega ativa encontrada');
+        return null;
+      }
+
+      // Retornar a primeira entrega (priorizar não retiradas)
+      final notPickedUp = deliveries.where((d) => d['isTripStart'] == false).toList();
+      if (notPickedUp.isNotEmpty) {
+        debugPrint('✅ Retornando primeira entrega não retirada: ${notPickedUp.first['requestNumber']}');
+        return notPickedUp.first;
+      }
+
+      debugPrint('✅ Retornando primeira entrega: ${deliveries.first['requestNumber']}');
+      return deliveries.first;
     } catch (e) {
       debugPrint('❌ Erro ao buscar entrega atual: $e');
       return null;
+    }
+  }
+
+  // Verificar se motorista tem entrega ativa não retirada
+  static Future<Map<String, dynamic>?> checkActiveDeliveryNotPickedUp() async {
+    try {
+      debugPrint('🔍 Verificando se há entrega ativa não retirada...');
+
+      final currentDelivery = await getCurrentDelivery();
+
+      if (currentDelivery != null) {
+        // Verificar se a entrega não foi retirada ainda
+        // Se existe currentDelivery, significa que há uma entrega ativa
+        debugPrint('⚠️ Entrega ativa encontrada: ${currentDelivery['requestId']}');
+        debugPrint('⚠️ Número da entrega: ${currentDelivery['requestNumber']}');
+        return currentDelivery;
+      }
+
+      debugPrint('✅ Não há entrega ativa não retirada');
+      return null;
+    } catch (e) {
+      debugPrint('❌ Erro ao verificar entrega ativa: $e');
+      return null;
+    }
+  }
+
+  // Verificar se a entrega ainda está disponível
+  static Future<bool> checkRequestAvailability(String requestId) async {
+    try {
+      debugPrint('🔍 Verificando disponibilidade da entrega: $requestId');
+
+      final token = await LocalStorageService.getAccessToken();
+      if (token == null) {
+        debugPrint('❌ Token não encontrado');
+        return false;
+      }
+
+      // Verificar se a entrega ainda está na lista de disponíveis
+      final availableDeliveries = await getAvailableDeliveries();
+      final isAvailable = availableDeliveries.any((delivery) {
+        final id = delivery['id']?.toString() ??
+                   delivery['requestId']?.toString() ??
+                   delivery['request_id']?.toString();
+        return id == requestId;
+      });
+
+      if (isAvailable) {
+        debugPrint('✅ Entrega $requestId ainda está disponível');
+      } else {
+        debugPrint('❌ Entrega $requestId não está mais disponível');
+      }
+
+      return isAvailable;
+    } catch (e) {
+      debugPrint('❌ Erro ao verificar disponibilidade: $e');
+      // Em caso de erro, retornar true para não bloquear o fluxo
+      return true;
     }
   }
 
@@ -166,6 +268,30 @@ class DeliveryService {
           debugPrint('❌ Detalhes: $errorJson');
         } catch (e) {
           debugPrint('❌ Não foi possível parsear o JSON de erro');
+        }
+      } else if (response.statusCode == 409) {
+        debugPrint('⚠️ ========== ERRO 409: ENTREGA EM ANDAMENTO ==========');
+        debugPrint('⚠️ O motorista já possui uma entrega em andamento');
+        debugPrint('⚠️ Body: ${response.body}');
+        try {
+          final errorJson = jsonDecode(response.body);
+          debugPrint('⚠️ Código: ${errorJson['code']}');
+          debugPrint('⚠️ Mensagem: ${errorJson['message']}');
+          debugPrint('⚠️ Entrega Ativa ID: ${errorJson['activeDeliveryId']}');
+          debugPrint('⚠️ Entrega Ativa Número: ${errorJson['activeDeliveryNumber']}');
+          return {
+            'error': 'delivery_in_progress',
+            'code': errorJson['code'],
+            'message': errorJson['message'],
+            'activeDeliveryId': errorJson['activeDeliveryId'],
+            'activeDeliveryNumber': errorJson['activeDeliveryNumber'],
+          };
+        } catch (e) {
+          debugPrint('❌ Não foi possível parsear o JSON de erro 409');
+          return {
+            'error': 'delivery_in_progress',
+            'message': 'Você já possui uma entrega em andamento',
+          };
         }
       } else if (response.statusCode == 410) {
         debugPrint('⏰ ========== ERRO 410: ENTREGA EXPIRADA ==========');

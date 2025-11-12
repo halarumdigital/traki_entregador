@@ -125,6 +125,12 @@ class NotificationService {
   // Stream pública para ouvir eventos de cancelamento
   static Stream<String> get onDeliveryCancelled => _deliveryCancelledController.stream;
 
+  // StreamController para eventos de entrega aceita por outro motorista
+  static final _deliveryTakenController = StreamController<Map<String, String>>.broadcast();
+
+  // Stream pública para ouvir eventos de entrega aceita
+  static Stream<Map<String, String>> get onDeliveryTaken => _deliveryTakenController.stream;
+
   // Guarda IDs de notificações locais associadas às entregas
   static final Map<String, int> _deliveryNotificationIds = {};
   static final Set<String> _pendingCancelledRequests = <String>{};
@@ -431,7 +437,7 @@ class NotificationService {
         await _cancelDeliveryNotification(requestId);
         await _clearPendingDeliveryNotification(requestId: requestId);
       } else {
-        debugPrint('⚠️ RequestId nǔo encontrado na notificação de cancelamento.');
+        debugPrint('⚠️ RequestId não encontrado na notificação de cancelamento.');
       }
 
       // Mostrar notificação local informando o cancelamento
@@ -440,6 +446,36 @@ class NotificationService {
         debugPrint('📢 Encaminhando cancelamento para NotificationHandler');
         _onMessageReceived!(notificationData);
       }
+    }
+    // Se for notificação de entrega aceita por outro motorista
+    else if (notificationType == 'delivery_taken' || notificationType == 'DELIVERY_TAKEN') {
+      debugPrint('✅ ===== ENTREGA ACEITA POR OUTRO MOTORISTA =====');
+      debugPrint('RequestId: ${notificationData['requestId'] ?? notificationData['request_id']}');
+      debugPrint('RequestNumber: ${notificationData['requestNumber']}');
+      debugPrint('Mensagem: ${notificationData['message']}');
+
+      final requestId = _extractRequestId(notificationData);
+      final requestNumber = notificationData['requestNumber']?.toString() ??
+                           notificationData['request_number']?.toString() ??
+                           'N/A';
+
+      if (requestId != null) {
+        // Emitir evento para fechar modal
+        _deliveryTakenController.add({
+          'requestId': requestId,
+          'requestNumber': requestNumber,
+        });
+        debugPrint('✅ Evento de entrega aceita emitido para requestId: $requestId');
+
+        // Cancelar notificação local se existir
+        await _cancelDeliveryNotification(requestId);
+        await _clearPendingDeliveryNotification(requestId: requestId);
+      } else {
+        debugPrint('⚠️ RequestId não encontrado na notificação de entrega aceita.');
+      }
+
+      // Não precisa mostrar notificação local nem encaminhar para handler
+      // O modal fecha automaticamente e mostra um snackbar
     }
     // Para outros tipos de notificação
     else {

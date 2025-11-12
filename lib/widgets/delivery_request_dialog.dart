@@ -21,6 +21,7 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
   bool _isProcessing = false;
   final AudioPlayer _audioPlayer = AudioPlayer();
   StreamSubscription<String>? _cancelSubscription;
+  StreamSubscription<Map<String, String>>? _takenSubscription;
   late final String? _requestId;
 
   @override
@@ -45,6 +46,7 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
     _startCountdown();
     _startNotificationSound();
     _listenForCancellation();
+    _listenForDeliveryTaken();
   }
 
   String? _resolveRequestId(Map<String, dynamic> data) {
@@ -90,6 +92,66 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
         debugPrint('[Cancelamento] Evento não corresponde a esta entrega.');
       }
     });
+  }
+
+  /// Escutar eventos de entrega aceita por outro motorista
+  void _listenForDeliveryTaken() {
+    debugPrint('[Entrega Aceita] Escutando entrega: ${_requestId ?? 'desconhecido'}');
+
+    _takenSubscription = NotificationService.onDeliveryTaken.listen((data) {
+      final takenRequestId = data['requestId'];
+      final takenRequestNumber = data['requestNumber'];
+      final currentRequestId = _requestId;
+
+      debugPrint('[Entrega Aceita] Evento recebido para requestId: $takenRequestId');
+      debugPrint('[Entrega Aceita] RequestId atual do modal: $currentRequestId');
+
+      if (currentRequestId == null) {
+        debugPrint('[Entrega Aceita] RequestId do modal indefinido. Fechando por segurança.');
+        _handleDeliveryTaken(takenRequestNumber);
+        return;
+      }
+
+      if (takenRequestId == currentRequestId) {
+        debugPrint('[Entrega Aceita] IDs coincidem. Fechando modal.');
+        _handleDeliveryTaken(takenRequestNumber);
+      } else {
+        debugPrint('[Entrega Aceita] Evento não corresponde a esta entrega.');
+      }
+    });
+  }
+
+  /// Handler quando a entrega é aceita por outro motorista
+  void _handleDeliveryTaken(String? requestNumber) {
+    // Cancelar timer
+    _timer?.cancel();
+
+    // Parar som
+    _audioPlayer.stop();
+
+    // Fechar modal
+    if (mounted) {
+      Navigator.of(context).pop();
+
+      // Mostrar snackbar informando
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.info_outline, color: Colors.white),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'A entrega foi aceita por outro entregador',
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   /// Handler quando a entrega é cancelada
@@ -190,10 +252,11 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
   void dispose() {
     _timer?.cancel();
     _cancelSubscription?.cancel();
+    _takenSubscription?.cancel();
     _audioPlayer.stop();
     _audioPlayer.dispose();
     debugPrint('🔇 Som de notificação parado');
-    debugPrint('🔌 Subscription de cancelamento desconectada');
+    debugPrint('🔌 Subscriptions desconectadas');
     super.dispose();
   }
 
@@ -251,6 +314,102 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
               content: Text('Esta entrega já expirou e não está mais disponível'),
               backgroundColor: Colors.orange,
               duration: Duration(seconds: 4),
+            ),
+          );
+          return;
+        }
+
+        if (result['error'] == 'delivery_in_progress') {
+          debugPrint('[Entrega] ⚠️ Motorista já possui entrega em andamento');
+          Navigator.pop(context);
+
+          // Mostrar diálogo específico
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                children: const [
+                  Icon(Icons.warning, color: Colors.orange, size: 32),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Entrega em Andamento',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    result['message'] ??
+                    'Você já possui uma entrega em andamento.\n\nRetire o pedido antes de aceitar uma nova entrega.',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  if (result['activeDeliveryNumber'] != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Entrega Ativa:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Entrega #${result['activeDeliveryNumber']}',
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+                if (result['activeDeliveryId'] != null)
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: buttonColor,
+                    ),
+                    onPressed: () async {
+                      Navigator.pop(context);
+                      // Buscar dados da entrega ativa e navegar
+                      final activeDelivery = await DeliveryService.getCurrentDelivery();
+                      if (activeDelivery != null && mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ActiveDeliveryScreen(delivery: activeDelivery),
+                          ),
+                        );
+                      }
+                    },
+                    child: const Text(
+                      'Ver Entrega Ativa',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+              ],
             ),
           );
           return;

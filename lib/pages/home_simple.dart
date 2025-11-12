@@ -28,6 +28,9 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
   bool _isLoadingDelivery = false;
   Map<String, dynamic>? _commissionStats;
   bool _isLoadingStats = false;
+  List<Map<String, dynamic>> _availableDeliveries = [];
+  bool _isLoadingAvailableDeliveries = false;
+  List<Map<String, dynamic>> _activeDeliveries = []; // NOVO: lista de entregas ativas
 
   @override
   void initState() {
@@ -36,6 +39,7 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
     _loadDriverProfile();
     _loadCurrentDelivery();
     _loadCommissionStats();
+    _loadAvailableDeliveries();
     _startLocationUpdates();
   }
 
@@ -142,23 +146,29 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
     });
 
     try {
-      debugPrint('📦 Buscando entrega em andamento...');
-      final delivery = await DeliveryService.getCurrentDelivery();
+      debugPrint('📦 ===== BUSCANDO ENTREGAS EM ANDAMENTO =====');
+
+      // Buscar TODAS as entregas ativas
+      final deliveries = await DeliveryService.getCurrentDeliveries();
 
       if (mounted) {
         setState(() {
-          _currentDelivery = delivery;
+          _activeDeliveries = deliveries;
+          // Manter _currentDelivery para compatibilidade (primeira entrega)
+          _currentDelivery = deliveries.isNotEmpty ? deliveries.first : null;
         });
 
-        // Apenas mostrar log, não navegar automaticamente
-        if (delivery != null) {
-          debugPrint('✅ Entrega em andamento encontrada');
-        } else {
+        if (deliveries.isEmpty) {
           debugPrint('ℹ️ Nenhuma entrega em andamento');
+        } else {
+          debugPrint('✅ ${deliveries.length} entrega(s) ativa(s) carregada(s)');
+          for (var i = 0; i < deliveries.length; i++) {
+            debugPrint('   [$i] ${deliveries[i]['requestNumber']} - ${deliveries[i]['customerName']}');
+          }
         }
       }
     } catch (e) {
-      debugPrint('❌ Erro ao buscar entrega em andamento: $e');
+      debugPrint('❌ Erro ao buscar entregas em andamento: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -204,6 +214,46 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _loadAvailableDeliveries() async {
+    setState(() {
+      _isLoadingAvailableDeliveries = true;
+    });
+
+    try {
+      debugPrint('📦 ===== BUSCANDO ENTREGAS DISPONÍVEIS =====');
+      final deliveries = await DeliveryService.getAvailableDeliveries();
+
+      debugPrint('📊 RESPOSTA RECEBIDA:');
+      debugPrint('   - Número de entregas: ${deliveries.length}');
+      debugPrint('   - Dados completos: $deliveries');
+
+      if (mounted) {
+        setState(() {
+          _availableDeliveries = deliveries;
+        });
+
+        debugPrint('✅ ${deliveries.length} entregas disponíveis carregadas no estado');
+
+        if (deliveries.isEmpty) {
+          debugPrint('⚠️ ATENÇÃO: Backend retornou lista vazia de entregas disponíveis');
+        } else {
+          debugPrint('📦 IDs das entregas recebidas:');
+          for (var i = 0; i < deliveries.length; i++) {
+            debugPrint('   [$i] ID: ${deliveries[i]['id'] ?? deliveries[i]['request_id']} - Empresa: ${deliveries[i]['company_name']}');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ ERRO ao buscar entregas disponíveis: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingAvailableDeliveries = false;
+        });
+      }
+    }
+  }
+
   // Função para atualizar todos os dados (pull-to-refresh)
   Future<void> _refreshData() async {
     debugPrint('🔄 Atualizando dados...');
@@ -213,6 +263,7 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
       _loadDriverProfile(),
       _loadCurrentDelivery(),
       _loadCommissionStats(),
+      _loadAvailableDeliveries(),
     ]);
 
     debugPrint('✅ Dados atualizados com sucesso!');
@@ -665,12 +716,25 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                   children: [
                     const SizedBox(height: 20),
 
-                    // Indicador de entrega ativa
-                    if (_currentDelivery != null)
-                      _buildActiveDeliveryBanner(),
+                    // Indicador de entregas ativas (suporta múltiplas entregas)
+                    if (_activeDeliveries.isNotEmpty) ...[
+                      // Banner informativo quando há múltiplas entregas
+                      if (_activeDeliveries.length > 1) ...[
+                        _buildMultipleDeliveriesBanner(_activeDeliveries.length),
+                        const SizedBox(height: 16),
+                      ],
 
-                    if (_currentDelivery != null)
-                      const SizedBox(height: 20),
+                      // Listar todos os cards de entregas ativas
+                      ..._activeDeliveries.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final delivery = entry.value;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: _buildActiveDeliveryCard(delivery, index + 1),
+                        );
+                      }),
+                      const SizedBox(height: 4),
+                    ],
 
                     // Cards informativos de estatísticas
                     if (_commissionStats != null)
@@ -683,24 +747,368 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                     const Center(
                       child: OnlineOfflineToggle(),
                     ),
-                    const SizedBox(height: 40),
-                    // Texto informativo
-                    Center(
-                      child: Text(
-                        'Arraste para baixo para atualizar\n\nUse o toggle acima para ficar\nOnline ou Offline',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 16,
+                    const SizedBox(height: 30),
+
+                    // Lista de entregas disponíveis
+                    if (_availableDeliveries.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          children: [
+                            Icon(Icons.local_shipping, color: buttonColor, size: 24),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Entregas Disponíveis (${_availableDeliveries.length})',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: textColor,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 16),
+                      ..._availableDeliveries.map((delivery) => _buildDeliveryCard(delivery)),
+                      const SizedBox(height: 20),
+                    ],
+
+                    // Loading de entregas disponíveis
+                    if (_isLoadingAvailableDeliveries)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 20),
+                        child: CircularProgressIndicator(),
+                      ),
+
+                    // Texto informativo
+                    if (_availableDeliveries.isEmpty && !_isLoadingAvailableDeliveries)
+                      Center(
+                        child: Text(
+                          'Arraste para baixo para atualizar\n\nUse o toggle acima para ficar\nOnline ou Offline\n\nNenhuma entrega disponível no momento',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 40),
                   ],
                 ),
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+
+  // Banner informativo quando há múltiplas entregas
+  Widget _buildMultipleDeliveriesBanner(int count) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blue.shade600, Colors.blue.shade700],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.layers,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Múltiplas Entregas Ativas',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Você tem $count entregas em andamento',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '$count',
+              style: TextStyle(
+                color: Colors.blue.shade700,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Card individual para cada entrega ativa
+  Widget _buildActiveDeliveryCard(Map<String, dynamic> delivery, int position) {
+    final String companyName = delivery['companyName'] ?? 'Empresa';
+    final String requestNumber = delivery['requestNumber'] ?? 'N/A';
+    final String customerName = delivery['customerName'] ?? 'Cliente';
+    final String distance = delivery['distance'] ?? '0';
+    final String driverAmount = delivery['driverAmount'] ?? '0.00';
+    final bool isTripStart = delivery['isTripStart'] == true;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [buttonColor, buttonColor.withOpacity(0.8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: buttonColor.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ActiveDeliveryScreen(
+                  delivery: delivery,
+                ),
+              ),
+            );
+            // Recarregar entregas após voltar
+            if (result != null || mounted) {
+              _loadCurrentDelivery();
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header com número da posição e status
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.local_shipping,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                              if (_activeDeliveries.length > 1) ...[
+                                const SizedBox(width: 6),
+                                Text(
+                                  '#$position',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    // Badge de status
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isTripStart ? Colors.green : Colors.orange,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isTripStart ? Icons.check_circle : Icons.pending,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isTripStart ? 'Retirada' : 'Pendente',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Informações principais
+                Text(
+                  'Entrega #$requestNumber',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  companyName,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Cliente: $customerName',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.85),
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Informações de distância e valor
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.straighten,
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$distance km',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.attach_money,
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                          Text(
+                            'R\$ $driverAmount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Botão de ação
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Ver detalhes',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.arrow_forward,
+                      color: Colors.white.withOpacity(0.9),
+                      size: 18,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -877,6 +1285,188 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDeliveryCard(Map<String, dynamic> delivery) {
+    final String companyName = delivery['company_name'] ?? 'Empresa';
+    final String pickupAddress = delivery['pick_address'] ?? 'Endereço de coleta';
+    final String dropAddress = delivery['drop_address'] ?? 'Endereço de entrega';
+    final String distance = delivery['total_distance']?.toString() ?? '0';
+    final String driverAmount = delivery['driver_amount']?.toString() ??
+                                 delivery['request_eta_amount']?.toString() ?? '0.00';
+    final String requestNumber = delivery['request_number'] ?? 'N/A';
+    final bool needsReturn = delivery['needs_return'] == true;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Cabeçalho com nome da empresa e número da solicitação
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    companyName,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: buttonColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '#$requestNumber',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: buttonColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Endereço de coleta
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.store, color: Colors.blue, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    pickupAddress,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: textColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // Ícone de seta
+            Padding(
+              padding: const EdgeInsets.only(left: 6),
+              child: Icon(Icons.arrow_downward, color: Colors.grey, size: 16),
+            ),
+            const SizedBox(height: 8),
+
+            // Endereço de entrega
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.location_on, color: Colors.red, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    dropAddress,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: textColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Informações de distância e valor
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Distância
+                Row(
+                  children: [
+                    Icon(Icons.straighten, color: Colors.grey[600], size: 16),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$distance km',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: textColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                // Valor
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.attach_money, color: Colors.green, size: 18),
+                      Text(
+                        'R\$ $driverAmount',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            // Badge de retorno se necessário
+            if (needsReturn) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.sync, color: Colors.orange, size: 16),
+                    SizedBox(width: 4),
+                    Text(
+                      'Necessita retorno',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.orange,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

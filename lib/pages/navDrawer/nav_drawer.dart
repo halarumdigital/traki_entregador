@@ -166,6 +166,45 @@ class _NavDrawerState extends State<NavDrawer> {
                         ),
                       ),
 
+                      // Ratings Card
+                      if (userDetails['rating'] != null && userDetails['noOfRatings'] != null)
+                        Container(
+                          margin: EdgeInsets.only(top: media.width * 0.05),
+                          padding: EdgeInsets.all(media.width * 0.04),
+                          width: media.width * 0.7,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: theme.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.star,
+                                color: Colors.amber,
+                                size: media.width * 0.06,
+                              ),
+                              SizedBox(width: media.width * 0.02),
+                              MyText(
+                                text: double.parse(userDetails['rating'].toString()).toStringAsFixed(2),
+                                size: media.width * eighteen,
+                                fontweight: FontWeight.bold,
+                                color: textColor,
+                              ),
+                              SizedBox(width: media.width * 0.015),
+                              MyText(
+                                text: '(${userDetails['noOfRatings']} ${userDetails['noOfRatings'] == 1 ? 'avaliação' : 'avaliações'})',
+                                size: media.width * fourteen,
+                                color: textColor.withOpacity(0.7),
+                              ),
+                            ],
+                          ),
+                        ),
+
                       // SizedBox(height: media.width*0.05,),
                       Expanded(
                           child: SingleChildScrollView(

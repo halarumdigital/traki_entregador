@@ -46,7 +46,10 @@
       "Bash(cmd /c \"if exist build rd /s /q build && echo Build deleted || echo Build not found\")",
       "Bash(gradlew.bat clean:*)",
       "Bash(timeout 2 cmd /c 'echo R > \\\\.\\pipe\\flutter_tools_stdin_3f202b' 2)",
-      "Bash(timeout 2 cmd /c 'echo R > \\\\.\\pipe\\flutter_tools_stdin_31fe32' 2)"
+      "Bash(timeout 2 cmd /c 'echo R > \\\\.\\pipe\\flutter_tools_stdin_31fe32' 2)",
+      "Bash(timeout 60 echo:*)",
+      "Bash(copy /b \"lib\\pages\\navDrawer\\nav_drawer.dart\" +,,)",
+      "Bash(netstat:*)"
     ],
     "deny": [],
     "ask": []

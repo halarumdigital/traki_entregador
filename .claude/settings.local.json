@@ -49,7 +49,8 @@
       "Bash(timeout 2 cmd /c 'echo R > \\\\.\\pipe\\flutter_tools_stdin_31fe32' 2)",
       "Bash(timeout 60 echo:*)",
       "Bash(copy /b \"lib\\pages\\navDrawer\\nav_drawer.dart\" +,,)",
-      "Bash(netstat:*)"
+      "Bash(netstat:*)",
+      "Bash(cmd /c \"tasklist | findstr dart.exe\")"
     ],
     "deny": [],
     "ask": []

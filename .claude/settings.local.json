@@ -31,7 +31,22 @@
       "Bash(tasklist:*)",
       "Bash(findstr:*)",
       "Bash(timeout 5 cmd:*)",
-      "Bash(timeout 2 cmd /c 'echo r > \\\\.\\pipe\\flutter_tools_stdin_5b146c' 2)"
+      "Bash(timeout 2 cmd /c 'echo r > \\\\.\\pipe\\flutter_tools_stdin_5b146c' 2)",
+      "Bash(timeout 2 cmd /c 'echo r > \\\\.\\pipe\\flutter_tools_stdin_375211' 2)",
+      "Bash(timeout 2 cmd /c 'echo R > \\\\.\\pipe\\flutter_tools_stdin_375211' 2)",
+      "Bash(timeout 2 cmd /c 'echo r > \\\\.\\pipe\\flutter_tools_stdin_555fcd' 2)",
+      "Bash(timeout 2 cmd /c 'echo R > \\\\.\\pipe\\flutter_tools_stdin_555fcd' 2)",
+      "Bash(timeout 2 cmd /c 'echo R > \\\\.\\pipe\\flutter_tools_stdin_46360e' 2)",
+      "Bash(timeout 2 cmd /c 'echo r > \\\\.\\pipe\\flutter_tools_stdin_8a5124' 2)",
+      "Bash(timeout 2 cmd /c 'echo R > \\\\.\\pipe\\flutter_tools_stdin_8a5124' 2)",
+      "Bash(timeout 2 cmd /c 'echo R > \\\\.\\pipe\\flutter_tools_stdin_4bd792' 2)",
+      "Bash(timeout 2 cmd /c 'echo r > \\\\.\\pipe\\flutter_tools_stdin_2cc07d' 2)",
+      "Bash(timeout 2 cmd /c 'echo R > \\\\.\\pipe\\flutter_tools_stdin_2cc07d' 2)",
+      "Bash(rd /s /q build 2)",
+      "Bash(cmd /c \"if exist build rd /s /q build && echo Build deleted || echo Build not found\")",
+      "Bash(gradlew.bat clean:*)",
+      "Bash(timeout 2 cmd /c 'echo R > \\\\.\\pipe\\flutter_tools_stdin_3f202b' 2)",
+      "Bash(timeout 2 cmd /c 'echo R > \\\\.\\pipe\\flutter_tools_stdin_31fe32' 2)"
     ],
     "deny": [],
     "ask": []

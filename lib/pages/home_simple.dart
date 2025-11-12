@@ -11,6 +11,7 @@ import '../services/delivery_service.dart';
 import '../services/location_permission_service.dart';
 import 'driver_profile_screen.dart';
 import 'active_delivery_screen.dart';
+import 'NavigatorPages/promotions.dart';
 
 class HomeSimple extends StatefulWidget {
   const HomeSimple({Key? key}) : super(key: key);
@@ -563,6 +564,23 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                 onTap: () {
                   Navigator.pop(context);
                   // TODO: Navegar para tela de histórico
+                },
+              ),
+              Divider(height: 1, color: borderLines),
+              ListTile(
+                leading: Icon(Icons.card_giftcard, color: buttonColor),
+                title: Text(
+                  'Promoções',
+                  style: TextStyle(color: textColor, fontSize: 16),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PromotionsPage(),
+                    ),
+                  );
                 },
               ),
               Divider(height: 1, color: borderLines),

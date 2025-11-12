@@ -538,4 +538,42 @@ class DeliveryService {
       return null;
     }
   }
+
+  // Obter promoções ativas
+  static Future<List<Map<String, dynamic>>> getPromotions() async {
+    try {
+      debugPrint('🎁 Buscando promoções ativas...');
+
+      final token = await LocalStorageService.getAccessToken();
+      if (token == null) {
+        debugPrint('❌ Token não encontrado');
+        return [];
+      }
+
+      final response = await http.get(
+        Uri.parse('${url}api/v1/driver/promotions'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      debugPrint('📥 Status Code: ${response.statusCode}');
+      debugPrint('📥 Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
+          final List<dynamic> data = jsonResponse['data'];
+          debugPrint('✅ Promoções carregadas com sucesso: ${data.length} promoções');
+          return data.map((item) => item as Map<String, dynamic>).toList();
+        }
+      }
+
+      debugPrint('⚠️ Nenhuma promoção encontrada (Status: ${response.statusCode})');
+      return [];
+    } catch (e) {
+      debugPrint('❌ Erro ao buscar promoções: $e');
+      return [];
+    }
+  }
 }

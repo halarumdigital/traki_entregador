@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_driver/pages/NavigatorPages/outstation.dart';
+import 'package:flutter_driver/pages/NavigatorPages/promotions.dart';
 import 'package:flutter_driver/pages/NavigatorPages/settings.dart';
 import 'package:flutter_driver/pages/NavigatorPages/support.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -434,6 +435,24 @@ class _NavDrawerState extends State<NavDrawer> {
                                 image: 'assets/images/earing.png',
                               ),
                             ),
+
+                            //Promoções
+                            userDetails['role'] != 'owner'
+                                ? SizedBox(
+                                    width: media.width * 0.7,
+                                    child: NavMenu(
+                                      onTap: () {
+                                        Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (context) =>
+                                                    const PromotionsPage()));
+                                      },
+                                      text: 'Promoções',
+                                      icon: Icons.card_giftcard,
+                                    ),
+                                  )
+                                : Container(),
 
                             //manage vehicle
 

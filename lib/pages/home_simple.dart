@@ -17,6 +17,7 @@ import 'NavigatorPages/promotions.dart';
 import 'NavigatorPages/faq.dart';
 import 'NavigatorPages/my_deliveries.dart';
 import 'NavigatorPages/notification.dart';
+import 'NavigatorPages/referral.dart';
 
 class HomeSimple extends StatefulWidget {
   const HomeSimple({Key? key}) : super(key: key);
@@ -464,268 +465,295 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                             ],
                           ),
               ),
-              // Dados do veículo
-              if (_driverProfile != null &&
-                  _driverProfile!['vehicleData'] != null)
-                Container(
-                  margin: const EdgeInsets.all(16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
+              // Conteúdo scrollável
+              Expanded(
+                child: SingleChildScrollView(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.directions_car,
-                            color: buttonColor,
-                            size: 24,
+                      // Dados do veículo
+                      if (_driverProfile != null &&
+                          _driverProfile!['vehicleData'] != null)
+                        Container(
+                          margin: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 10),
-                          Text(
-                            'Meu Veículo',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: textColor,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.directions_car,
+                                    color: buttonColor,
+                                    size: 24,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    'Meu Veículo',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: textColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              _buildVehicleInfo(
+                                'Categoria',
+                                _driverProfile!['vehicleData']?['category'] ?? '-',
+                              ),
+                              _buildVehicleInfo(
+                                'Marca',
+                                _driverProfile!['vehicleData']?['brand'] ?? '-',
+                              ),
+                              _buildVehicleInfo(
+                                'Modelo',
+                                _driverProfile!['vehicleData']?['model'] ?? '-',
+                              ),
+                              _buildVehicleInfo(
+                                'Placa',
+                                _driverProfile!['vehicleData']?['plate'] ?? '-',
+                              ),
+                              _buildVehicleInfo(
+                                'Cor',
+                                _driverProfile!['vehicleData']?['color'] ?? '-',
+                              ),
+                              _buildVehicleInfo(
+                                'Ano',
+                                _driverProfile!['vehicleData']?['year'] ?? '-',
+                              ),
+                            ],
+                          ),
+                        ),
+                      // Rating
+                      if (_driverProfile != null &&
+                          _driverProfile!['rating'] != null)
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              Column(
+                                children: [
+                                  const Icon(
+                                    Icons.star,
+                                    color: Colors.amber,
+                                    size: 32,
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    _driverProfile!['rating']?.toString() ?? '0.0',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: textColor,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Média',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: textColor.withOpacity(0.7),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Column(
+                                children: [
+                                  Icon(
+                                    Icons.rate_review,
+                                    color: buttonColor,
+                                    size: 32,
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    _driverProfile!['noOfRatings']?.toString() ?? '0',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: textColor,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Avaliações',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: textColor.withOpacity(0.7),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(height: 20),
+                      // Itens do menu
+                      ListTile(
+                        leading: Icon(Icons.person, color: buttonColor),
+                        title: Text(
+                          'Meu Perfil',
+                          style: TextStyle(color: textColor, fontSize: 16),
+                        ),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const DriverProfileScreen(),
                             ),
-                          ),
-                        ],
+                          );
+                        },
                       ),
-                      const SizedBox(height: 12),
-                      _buildVehicleInfo(
-                        'Categoria',
-                        _driverProfile!['vehicleData']?['category'] ?? '-',
+                      Divider(height: 1, color: borderLines),
+                      ListTile(
+                        leading: Icon(Icons.local_shipping_outlined, color: buttonColor),
+                        title: Text(
+                          'Minhas Entregas',
+                          style: TextStyle(color: textColor, fontSize: 16),
+                        ),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const MyDeliveries(),
+                            ),
+                          );
+                        },
                       ),
-                      _buildVehicleInfo(
-                        'Marca',
-                        _driverProfile!['vehicleData']?['brand'] ?? '-',
+                      Divider(height: 1, color: borderLines),
+                      ListTile(
+                        leading: Icon(Icons.notifications_outlined, color: buttonColor),
+                        title: Text(
+                          'Notificações',
+                          style: TextStyle(color: textColor, fontSize: 16),
+                        ),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const NotificationPage(),
+                            ),
+                          );
+                        },
                       ),
-                      _buildVehicleInfo(
-                        'Modelo',
-                        _driverProfile!['vehicleData']?['model'] ?? '-',
+                      Divider(height: 1, color: borderLines),
+                      ListTile(
+                        leading: Icon(Icons.people_alt_outlined, color: buttonColor),
+                        title: Text(
+                          'Indicações',
+                          style: TextStyle(color: textColor, fontSize: 16),
+                        ),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ReferralPage(),
+                            ),
+                          );
+                        },
                       ),
-                      _buildVehicleInfo(
-                        'Placa',
-                        _driverProfile!['vehicleData']?['plate'] ?? '-',
+                      Divider(height: 1, color: borderLines),
+                      ListTile(
+                        leading: Icon(Icons.card_giftcard, color: buttonColor),
+                        title: Text(
+                          'Promoções',
+                          style: TextStyle(color: textColor, fontSize: 16),
+                        ),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const PromotionsPage(),
+                            ),
+                          );
+                        },
                       ),
-                      _buildVehicleInfo(
-                        'Cor',
-                        _driverProfile!['vehicleData']?['color'] ?? '-',
+                      Divider(height: 1, color: borderLines),
+                      ListTile(
+                        leading: Icon(Icons.settings, color: buttonColor),
+                        title: Text(
+                          'Configurações',
+                          style: TextStyle(color: textColor, fontSize: 16),
+                        ),
+                        onTap: () {
+                          Navigator.pop(context);
+                          // TODO: Navegar para tela de configurações
+                        },
                       ),
-                      _buildVehicleInfo(
-                        'Ano',
-                        _driverProfile!['vehicleData']?['year'] ?? '-',
+                      Divider(height: 1, color: borderLines),
+                      ListTile(
+                        leading: Icon(Icons.help_outline, color: buttonColor),
+                        title: Text(
+                          'FAQ',
+                          style: TextStyle(color: textColor, fontSize: 16),
+                        ),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const Faq()),
+                          );
+                        },
                       ),
+                      Divider(height: 1, color: borderLines),
+                      ListTile(
+                        leading: Icon(Icons.support_agent, color: buttonColor),
+                        title: Text(
+                          'Ajuda',
+                          style: TextStyle(color: textColor, fontSize: 16),
+                        ),
+                        onTap: () {
+                          Navigator.pop(context);
+                          // TODO: Navegar para tela de ajuda
+                        },
+                      ),
+                      Divider(height: 1, color: borderLines),
+                      const SizedBox(height: 20),
+                      ListTile(
+                        leading: const Icon(Icons.exit_to_app, color: Colors.red),
+                        title: const Text(
+                          'Sair',
+                          style: TextStyle(color: Colors.red, fontSize: 16),
+                        ),
+                        onTap: () async {
+                          await LocalStorageService.clearSession();
+                          if (context.mounted) {
+                            Navigator.pushReplacementNamed(context, '/login');
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),
-              // Rating
-              if (_driverProfile != null &&
-                  _driverProfile!['rating'] != null)
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      Column(
-                        children: [
-                          const Icon(
-                            Icons.star,
-                            color: Colors.amber,
-                            size: 32,
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            _driverProfile!['rating']?.toString() ?? '0.0',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: textColor,
-                            ),
-                          ),
-                          Text(
-                            'Média',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: textColor.withOpacity(0.7),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Column(
-                        children: [
-                          Icon(
-                            Icons.rate_review,
-                            color: buttonColor,
-                            size: 32,
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            _driverProfile!['noOfRatings']?.toString() ?? '0',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: textColor,
-                            ),
-                          ),
-                          Text(
-                            'Avaliações',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: textColor.withOpacity(0.7),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              const SizedBox(height: 20),
-              // Itens do menu
-              ListTile(
-                leading: Icon(Icons.person, color: buttonColor),
-                title: Text(
-                  'Meu Perfil',
-                  style: TextStyle(color: textColor, fontSize: 16),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const DriverProfileScreen(),
-                    ),
-                  );
-                },
               ),
-              Divider(height: 1, color: borderLines),
-              ListTile(
-                leading: Icon(Icons.local_shipping_outlined, color: buttonColor),
-                title: Text(
-                  'Minhas Entregas',
-                  style: TextStyle(color: textColor, fontSize: 16),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const MyDeliveries(),
-                    ),
-                  );
-                },
-              ),
-              Divider(height: 1, color: borderLines),
-              ListTile(
-                leading: Icon(Icons.notifications_outlined, color: buttonColor),
-                title: Text(
-                  'Notificações',
-                  style: TextStyle(color: textColor, fontSize: 16),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const NotificationPage(),
-                    ),
-                  );
-                },
-              ),
-              Divider(height: 1, color: borderLines),
-              ListTile(
-                leading: Icon(Icons.card_giftcard, color: buttonColor),
-                title: Text(
-                  'Promoções',
-                  style: TextStyle(color: textColor, fontSize: 16),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const PromotionsPage(),
-                    ),
-                  );
-                },
-              ),
-              Divider(height: 1, color: borderLines),
-              ListTile(
-                leading: Icon(Icons.settings, color: buttonColor),
-                title: Text(
-                  'Configurações',
-                  style: TextStyle(color: textColor, fontSize: 16),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  // TODO: Navegar para tela de configurações
-                },
-              ),
-              Divider(height: 1, color: borderLines),
-              ListTile(
-                leading: Icon(Icons.help_outline, color: buttonColor),
-                title: Text(
-                  'FAQ',
-                  style: TextStyle(color: textColor, fontSize: 16),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const Faq()),
-                  );
-                },
-              ),
-              Divider(height: 1, color: borderLines),
-              ListTile(
-                leading: Icon(Icons.support_agent, color: buttonColor),
-                title: Text(
-                  'Ajuda',
-                  style: TextStyle(color: textColor, fontSize: 16),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  // TODO: Navegar para tela de ajuda
-                },
-              ),
-              const Spacer(),
-              ListTile(
-                leading: const Icon(Icons.exit_to_app, color: Colors.red),
-                title: const Text(
-                  'Sair',
-                  style: TextStyle(color: Colors.red, fontSize: 16),
-                ),
-                onTap: () async {
-                  await LocalStorageService.clearSession();
-                  if (context.mounted) {
-                    Navigator.pushReplacementNamed(context, '/login');
-                  }
-                },
-              ),
-              const SizedBox(height: 10),
             ],
           ),
         ),

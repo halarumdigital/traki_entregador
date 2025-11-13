@@ -39,7 +39,10 @@
       "Bash(npm run dev:*)",
       "Bash(netstat:*)",
       "Bash(cmd //c \"taskkill //F //PID 81352\")",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(\"f:\\fretus_driver\\lib\\pages\\NavigatorPages\\referral.dart\")",
+      "Bash(cmd /c \"rd /s /q build .dart_tool android\\.gradle 2>nul & echo Caches removidos\")",
+      "Bash(r:*)"
     ],
     "deny": [],
     "ask": []

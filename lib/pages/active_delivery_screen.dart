@@ -39,6 +39,25 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
     }
   }
 
+  // Limpar endereço removendo nome, WhatsApp e referência
+  String _cleanAddress(String address) {
+    String cleanedAddress = address;
+
+    // Remover nome do cliente [nome]
+    cleanedAddress = cleanedAddress.replaceFirst(RegExp(r'^\[.*?\]\s*'), '');
+
+    // Remover WhatsApp [WhatsApp: xxx]
+    cleanedAddress = cleanedAddress.replaceAll(RegExp(r'\[WhatsApp:\s*[^\]]+\]\s*'), '');
+
+    // Remover referência [Ref: xxx]
+    cleanedAddress = cleanedAddress.replaceAll(RegExp(r'\[Ref:\s*[^\]]+\]\s*'), '');
+
+    // Remover padrão [nome] do início do endereço (caso ainda tenha algum)
+    cleanedAddress = cleanedAddress.replaceAll(RegExp(r'^\[.*?\]\s*'), '');
+
+    return cleanedAddress.trim();
+  }
+
   Future<void> _updateStatus(String newStatus, String deliveryId) async {
     if (_isProcessing) return;
 
@@ -504,7 +523,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          address,
+                          _cleanAddress(address),
                           style: const TextStyle(fontSize: 14),
                         ),
                       ),
@@ -849,7 +868,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
-                  address,
+                  _cleanAddress(address),
                   style: const TextStyle(
                     fontSize: 14,
                     color: Colors.grey,

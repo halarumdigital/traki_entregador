@@ -679,7 +679,7 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
                   ),
                 ),
 
-              // Endereços
+              // Endereço de Retirada (sempre exibido)
               _buildAddressRow(
                 Icons.place,
                 Colors.green,
@@ -688,7 +688,7 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
               ),
               const SizedBox(height: 8),
 
-              // Entrega: mostrar apenas primeira parada se tem múltiplas
+              // Endereço de Entrega (sempre exibido)
               if (_hasMultipleStops())
                 _buildAddressRow(
                   Icons.flag,
@@ -701,12 +701,12 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
                   Icons.flag,
                   Colors.red,
                   'Entrega',
-                  widget.data['dropoffAddress'] ?? '',
+                  _getFirstStopAddress(),
                 ),
 
               const SizedBox(height: 16),
 
-              // Informações da entrega
+              // Informações da entrega (sempre exibidas)
               Row(
                 children: [
                   Expanded(
@@ -779,7 +779,7 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
                   ),
                 ),
 
-              // Valor
+              // Valor (sempre exibido)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(

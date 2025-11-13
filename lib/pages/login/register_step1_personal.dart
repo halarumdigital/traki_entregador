@@ -21,6 +21,7 @@ class _RegisterStep1PersonalState extends State<RegisterStep1Personal> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _referralCodeController = TextEditingController();
 
   // Formatador de CPF: XXX.XXX.XXX-XX
   final cpfFormatter = MaskTextInputFormatter(
@@ -119,6 +120,9 @@ class _RegisterStep1PersonalState extends State<RegisterStep1Personal> {
               'email': _emailController.text.trim(),
               'password': _passwordController.text,
               'serviceLocationId': _selectedCityId,
+              'referralCode': _referralCodeController.text.trim().isNotEmpty
+                ? _referralCodeController.text.trim()
+                : null,
             },
           ),
         ),
@@ -330,6 +334,26 @@ class _RegisterStep1PersonalState extends State<RegisterStep1Personal> {
                             ),
                             SizedBox(height: media.height * 0.02),
 
+                            // Código de Indicação (Opcional)
+                            InputField(
+                              textController: _referralCodeController,
+                              text: 'Código de Indicação (Opcional)',
+                              onTap: (val) {},
+                            ),
+                            SizedBox(height: media.height * 0.01),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: media.width * 0.025),
+                              child: Text(
+                                'Tem um código de indicação? Insira aqui para ganhar benefícios!',
+                                style: GoogleFonts.notoSans(
+                                  fontSize: 12,
+                                  color: hintColor,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: media.height * 0.02),
+
                             // Seletor de Cidade
                             Container(
                               decoration: BoxDecoration(
@@ -459,6 +483,7 @@ class _RegisterStep1PersonalState extends State<RegisterStep1Personal> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _referralCodeController.dispose();
     super.dispose();
   }
 }

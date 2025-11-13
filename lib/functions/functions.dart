@@ -1540,7 +1540,7 @@ driverRegisterWithoutDocuments(Map<String, dynamic> data) async {
     var fcmToken = token.toString();
     debugPrint('📲 FCM Token obtido: ${fcmToken.substring(0, min(20, fcmToken.length))}...');
 
-    // Create POST request with JSON body
+    // Create POST request with JSON body (com timeout de 30 segundos)
     var response = await http.post(
       Uri.parse('${url}api/v1/driver/register'),
       headers: {'Content-Type': 'application/json'},
@@ -1551,6 +1551,7 @@ driverRegisterWithoutDocuments(Map<String, dynamic> data) async {
         'cpf': data['cpf'] ?? '',
         'email': data['email'] ?? '',
         'serviceLocationId': data['serviceLocationId']?.toString() ?? '',
+        'referralCode': data['referralCode'], // Código de indicação (opcional)
         'vehicleTypeId': data['vehicleTypeId']?.toString() ?? '',
         'carMake': data['carMake'] ?? '',
         'carModel': data['carModel'] ?? '',
@@ -1560,6 +1561,12 @@ driverRegisterWithoutDocuments(Map<String, dynamic> data) async {
         'deviceToken': fcmToken,
         'loginBy': (platform == TargetPlatform.android) ? 'android' : 'ios',
       }),
+    ).timeout(
+      const Duration(seconds: 30),
+      onTimeout: () {
+        debugPrint('⏱️ TIMEOUT - Servidor não respondeu em 30 segundos');
+        throw TimeoutException('Servidor não está respondendo. Tente novamente.');
+      },
     );
 
     debugPrint('📥 Status Code: ${response.statusCode}');
@@ -1621,6 +1628,9 @@ driverRegisterWithoutDocuments(Map<String, dynamic> data) async {
       debugPrint('🌐 SocketException - Sem conexão com servidor');
       internet = false;
       result = 'Sem conexão com a internet';
+    } else if (e is TimeoutException) {
+      debugPrint('⏱️ TimeoutException - Servidor não respondeu a tempo');
+      result = 'Servidor não está respondendo. Verifique sua conexão e tente novamente.';
     } else {
       debugPrint('⚠️ Erro desconhecido: ${e.runtimeType}');
       result = 'Erro: $e';

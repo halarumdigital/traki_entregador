@@ -20,6 +20,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 // import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:quick_nav/quick_nav.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../pages/NavigatorPages/editprofile.dart';
@@ -1328,6 +1329,68 @@ updatePassword(email, password, loginby) async {
   return result;
 }
 
+// Função para obter o device ID único do dispositivo
+Future<String> getDeviceId() async {
+  try {
+    final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    String deviceId = '';
+
+    if (Platform.isAndroid) {
+      AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+      // Usa o Android ID como identificador único
+      deviceId = androidInfo.id;
+      debugPrint('📱 Android Device ID: $deviceId');
+    } else if (Platform.isIOS) {
+      IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
+      // Usa o identifierForVendor no iOS
+      deviceId = iosInfo.identifierForVendor ?? '';
+      debugPrint('📱 iOS Device ID: $deviceId');
+    }
+
+    return deviceId;
+  } catch (e) {
+    debugPrint('❌ Erro ao obter Device ID: $e');
+    return '';
+  }
+}
+
+// Função para salvar o device ID no servidor
+Future<bool> saveDeviceIdToServer(String driverId, String deviceId) async {
+  try {
+    if (deviceId.isEmpty) {
+      debugPrint('⚠️ Device ID vazio, não será salvo');
+      return false;
+    }
+
+    debugPrint('💾 Salvando Device ID no servidor...');
+    debugPrint('👤 Driver ID: $driverId');
+    debugPrint('📱 Device ID: $deviceId');
+
+    var response = await http.post(
+      Uri.parse('${url}api/drivers/$driverId/device'),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'deviceId': deviceId,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      var data = jsonDecode(response.body);
+      debugPrint('✅ Device ID salvo com sucesso: ${data['message']}');
+      return true;
+    } else {
+      debugPrint('❌ Erro ao salvar Device ID: ${response.statusCode}');
+      debugPrint('Response: ${response.body}');
+      return false;
+    }
+  } catch (e) {
+    debugPrint('❌ Erro ao salvar Device ID: $e');
+    return false;
+  }
+}
+
 //driver login
 driverLogin(number, login, password, isOtp) async {
   bearerToken.clear();
@@ -1401,6 +1464,17 @@ driverLogin(number, login, password, isOtp) async {
           debugPrint('   uploaded_document: ${userDetails['uploaded_document']}');
           debugPrint('   role: ${userDetails['role']}');
           debugPrint('   enable_bidding: ${userDetails['enable_bidding']}');
+
+          // Salvar o Device ID no servidor após login bem-sucedido
+          if (userDetails['id'] != null) {
+            String driverId = userDetails['id'].toString();
+            String deviceId = await getDeviceId();
+
+            if (deviceId.isNotEmpty) {
+              debugPrint('🔄 Salvando Device ID após login...');
+              await saveDeviceIdToServer(driverId, deviceId);
+            }
+          }
 
           result = true;
         } else {
@@ -1500,7 +1574,29 @@ driverRegisterWithoutDocuments(Map<String, dynamic> data) async {
         'success': true,
         'driverId': jsonVal['data']?['id'] ?? jsonVal['id'] ?? '',
       };
+
+      // Salvar o Device ID no servidor após registro bem-sucedido
+      if (result['driverId'] != null && result['driverId'].toString().isNotEmpty) {
+        String driverId = result['driverId'].toString();
+        String deviceId = await getDeviceId();
+
+        if (deviceId.isNotEmpty) {
+          debugPrint('🔄 Salvando Device ID após registro com documentos...');
+          await saveDeviceIdToServer(driverId, deviceId);
+        }
+      }
       debugPrint('👤 Driver ID retornado: ${result['driverId']}');
+
+      // Salvar o Device ID no servidor após registro bem-sucedido
+      if (result['driverId'] != null && result['driverId'].toString().isNotEmpty) {
+        String driverId = result['driverId'].toString();
+        String deviceId = await getDeviceId();
+
+        if (deviceId.isNotEmpty) {
+          debugPrint('🔄 Salvando Device ID após registro...');
+          await saveDeviceIdToServer(driverId, deviceId);
+        }
+      }
     } else if (response.statusCode == 400) {
       debugPrint('❌ 400 Bad Request');
       var jsonVal = jsonDecode(response.body);
@@ -1601,6 +1697,17 @@ driverRegister(
         'success': true,
         'driverId': jsonVal['data']?['id'] ?? jsonVal['id'] ?? '',
       };
+
+      // Salvar o Device ID no servidor após registro bem-sucedido
+      if (result['driverId'] != null && result['driverId'].toString().isNotEmpty) {
+        String driverId = result['driverId'].toString();
+        String deviceId = await getDeviceId();
+
+        if (deviceId.isNotEmpty) {
+          debugPrint('🔄 Salvando Device ID após registro com documentos...');
+          await saveDeviceIdToServer(driverId, deviceId);
+        }
+      }
     } else if (respon.statusCode == 400) {
       debugPrint('❌ 400 Bad Request');
       var jsonVal = jsonDecode(respon.body);

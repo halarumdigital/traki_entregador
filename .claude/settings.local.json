@@ -17,7 +17,10 @@
       "Bash(timeout:*)",
       "Bash(flutter_input.txt)",
       "Bash(dir /B *.md *.ps1 *.patch nul 2)",
-      "Bash(nul)"
+      "Bash(nul)",
+      "Bash(dir:*)",
+      "Bash(cat:*)",
+      "Bash(flutter analyze:*)"
     ],
     "deny": [],
     "ask": []

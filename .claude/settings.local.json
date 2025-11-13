@@ -32,7 +32,14 @@
       "Bash(cmd /c \"rd /s /q build .dart_tool 2>nul & echo Caches limpos\")",
       "Bash(flutter pub get:*)",
       "Bash(flutter install:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(/tmp/flutter_input_206ab9.txt)",
+      "Bash(nc:*)",
+      "Bash(python -m json.tool:*)",
+      "Bash(npm run dev:*)",
+      "Bash(netstat:*)",
+      "Bash(cmd //c \"taskkill //F //PID 81352\")",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

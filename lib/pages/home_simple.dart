@@ -16,6 +16,7 @@ import '../models/delivery.dart';
 import 'NavigatorPages/promotions.dart';
 import 'NavigatorPages/faq.dart';
 import 'NavigatorPages/my_deliveries.dart';
+import 'NavigatorPages/notification.dart';
 
 class HomeSimple extends StatefulWidget {
   const HomeSimple({Key? key}) : super(key: key);
@@ -633,6 +634,23 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                     context,
                     MaterialPageRoute(
                       builder: (context) => const MyDeliveries(),
+                    ),
+                  );
+                },
+              ),
+              Divider(height: 1, color: borderLines),
+              ListTile(
+                leading: Icon(Icons.notifications_outlined, color: buttonColor),
+                title: Text(
+                  'Notificações',
+                  style: TextStyle(color: textColor, fontSize: 16),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NotificationPage(),
                     ),
                   );
                 },

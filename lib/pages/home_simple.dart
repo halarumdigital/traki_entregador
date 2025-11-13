@@ -14,6 +14,8 @@ import 'active_delivery_screen.dart';
 import 'delivery_with_stops_screen.dart';
 import '../models/delivery.dart';
 import 'NavigatorPages/promotions.dart';
+import 'NavigatorPages/faq.dart';
+import 'NavigatorPages/my_deliveries.dart';
 
 class HomeSimple extends StatefulWidget {
   const HomeSimple({Key? key}) : super(key: key);
@@ -620,26 +622,19 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
               ),
               Divider(height: 1, color: borderLines),
               ListTile(
-                leading: Icon(Icons.local_shipping, color: buttonColor),
+                leading: Icon(Icons.local_shipping_outlined, color: buttonColor),
                 title: Text(
-                  'Minhas Viagens',
+                  'Minhas Entregas',
                   style: TextStyle(color: textColor, fontSize: 16),
                 ),
                 onTap: () {
                   Navigator.pop(context);
-                  // TODO: Navegar para tela de viagens
-                },
-              ),
-              Divider(height: 1, color: borderLines),
-              ListTile(
-                leading: Icon(Icons.history, color: buttonColor),
-                title: Text(
-                  'Histórico',
-                  style: TextStyle(color: textColor, fontSize: 16),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  // TODO: Navegar para tela de histórico
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const MyDeliveries(),
+                    ),
+                  );
                 },
               ),
               Divider(height: 1, color: borderLines),
@@ -675,6 +670,21 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
               ListTile(
                 leading: Icon(Icons.help_outline, color: buttonColor),
                 title: Text(
+                  'FAQ',
+                  style: TextStyle(color: textColor, fontSize: 16),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const Faq()),
+                  );
+                },
+              ),
+              Divider(height: 1, color: borderLines),
+              ListTile(
+                leading: Icon(Icons.support_agent, color: buttonColor),
+                title: Text(
                   'Ajuda',
                   style: TextStyle(color: textColor, fontSize: 16),
                 ),
@@ -684,7 +694,6 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                 },
               ),
               const Spacer(),
-              Divider(height: 1, color: borderLines),
               ListTile(
                 leading: const Icon(Icons.exit_to_app, color: Colors.red),
                 title: const Text(

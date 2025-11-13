@@ -14,10 +14,10 @@ import '../NavigatorPages/bankdetails.dart';
 import '../NavigatorPages/driverdetails.dart';
 import '../NavigatorPages/driverearnings.dart';
 import '../NavigatorPages/editprofile.dart';
-import '../NavigatorPages/history.dart';
+import '../NavigatorPages/faq.dart';
+import '../NavigatorPages/my_deliveries.dart';
 import '../NavigatorPages/makecomplaint.dart';
 import '../NavigatorPages/managevehicles.dart';
-import '../NavigatorPages/myroutebookings.dart';
 import '../NavigatorPages/notification.dart';
 import '../NavigatorPages/referral.dart';
 import '../NavigatorPages/sos.dart';
@@ -210,105 +210,106 @@ class _NavDrawerState extends State<NavDrawer> {
                           child: SingleChildScrollView(
                         child: Column(
                           children: [
-                            userDetails['role'] != 'owner' &&
-                                    userDetails[
-                                            'enable_my_route_booking_feature'] ==
-                                        '1' &&
-                                    userDetails['transport_type'] != 'delivery'
-                                ? InkWell(
-                                    onTap: () async {
-                                      var nav = await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const MyRouteBooking()));
-                                      if (nav != null) {
-                                        if (nav) {
-                                          setState(() {});
-                                        }
-                                      }
-                                    },
-                                    child: Container(
-                                      padding: EdgeInsets.only(
-                                          top: media.width * 0.07),
-                                      width: media.width * 0.7,
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Image.asset(
-                                                'assets/images/myroute.png',
-                                                fit: BoxFit.contain,
-                                                width: media.width * 0.04,
-                                                color: textColor,
-                                              ),
-                                              SizedBox(
-                                                width: media.width * 0.025,
-                                              ),
-                                              SizedBox(
-                                                  width: media.width * 0.45,
-                                                  child: MyText(
-                                                    text: languages[
-                                                            choosenLanguage]
-                                                        ['text_my_route'],
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    size: media.width * sixteen,
-                                                    color: textColor,
-                                                  ))
-                                            ],
-                                          ),
+                            // REMOVIDO TEMPORARIAMENTE PARA TESTE
+                            // userDetails['role'] != 'owner' &&
+                            //         userDetails[
+                            //                 'enable_my_route_booking_feature'] ==
+                            //             '1' &&
+                            //         userDetails['transport_type'] != 'delivery'
+                            //     ? InkWell(
+                            //         onTap: () async {
+                            //           var nav = await Navigator.push(
+                            //               context,
+                            //               MaterialPageRoute(
+                            //                   builder: (context) =>
+                            //                       const MyRouteBooking()));
+                            //           if (nav != null) {
+                            //             if (nav) {
+                            //               setState(() {});
+                            //             }
+                            //           }
+                            //         },
+                            //         child: Container(
+                            //           padding: EdgeInsets.only(
+                            //               top: media.width * 0.07),
+                            //           width: media.width * 0.7,
+                            //           child: Row(
+                            //             crossAxisAlignment:
+                            //                 CrossAxisAlignment.center,
+                            //             children: [
+                            //               Row(
+                            //                 children: [
+                            //                   Image.asset(
+                            //                     'assets/images/myroute.png',
+                            //                     fit: BoxFit.contain,
+                            //                     width: media.width * 0.04,
+                            //                     color: textColor,
+                            //                   ),
+                            //                   SizedBox(
+                            //                     width: media.width * 0.025,
+                            //                   ),
+                            //                   SizedBox(
+                            //                       width: media.width * 0.45,
+                            //                       child: MyText(
+                            //                         text: languages[
+                            //                                 choosenLanguage]
+                            //                             ['text_my_route'],
+                            //                         overflow:
+                            //                             TextOverflow.ellipsis,
+                            //                         size: media.width * sixteen,
+                            //                         color: textColor,
+                            //                       ))
+                            //                 ],
+                            //               ),
 
-                                          // SizedBox(width: media.width*0.05,),
-                                          if (userDetails['my_route_address'] !=
-                                              null)
-                                            Container(
-                                              padding: EdgeInsets.only(
-                                                  left: media.width * 0.005,
-                                                  right: media.width * 0.005),
-                                              height: media.width * 0.05,
-                                              width: media.width * 0.1,
-                                              decoration: BoxDecoration(
-                                                borderRadius:
-                                                    BorderRadius.circular(
-                                                        media.width * 0.025),
-                                                color: (userDetails[
-                                                            'enable_my_route_booking'] ==
-                                                        1)
-                                                    ? Colors.green
-                                                        .withOpacity(0.4)
-                                                    : Colors.grey
-                                                        .withOpacity(0.6),
-                                              ),
-                                              child: Row(
-                                                mainAxisAlignment: (userDetails[
-                                                            'enable_my_route_booking'] ==
-                                                        1)
-                                                    ? MainAxisAlignment.end
-                                                    : MainAxisAlignment.start,
-                                                children: [
-                                                  Container(
-                                                    height: media.width * 0.045,
-                                                    width: media.width * 0.045,
-                                                    decoration: BoxDecoration(
-                                                      shape: BoxShape.circle,
-                                                      color: (userDetails[
-                                                                  'enable_my_route_booking'] ==
-                                                              1)
-                                                          ? Colors.green
-                                                          : Colors.grey,
-                                                    ),
-                                                  )
-                                                ],
-                                              ),
-                                            )
-                                        ],
-                                      ),
-                                    ),
-                                  )
-                                : Container(),
+                            //               // SizedBox(width: media.width*0.05,),
+                            //               if (userDetails['my_route_address'] !=
+                            //                   null)
+                            //                 Container(
+                            //                   padding: EdgeInsets.only(
+                            //                       left: media.width * 0.005,
+                            //                       right: media.width * 0.005),
+                            //                   height: media.width * 0.05,
+                            //                   width: media.width * 0.1,
+                            //                   decoration: BoxDecoration(
+                            //                     borderRadius:
+                            //                         BorderRadius.circular(
+                            //                             media.width * 0.025),
+                            //                     color: (userDetails[
+                            //                                 'enable_my_route_booking'] ==
+                            //                             1)
+                            //                         ? Colors.green
+                            //                             .withOpacity(0.4)
+                            //                         : Colors.grey
+                            //                             .withOpacity(0.6),
+                            //                   ),
+                            //                   child: Row(
+                            //                     mainAxisAlignment: (userDetails[
+                            //                                 'enable_my_route_booking'] ==
+                            //                             1)
+                            //                         ? MainAxisAlignment.end
+                            //                         : MainAxisAlignment.start,
+                            //                     children: [
+                            //                       Container(
+                            //                         height: media.width * 0.045,
+                            //                         width: media.width * 0.045,
+                            //                         decoration: BoxDecoration(
+                            //                           shape: BoxShape.circle,
+                            //                           color: (userDetails[
+                            //                                       'enable_my_route_booking'] ==
+                            //                                   1)
+                            //                               ? Colors.green
+                            //                               : Colors.grey,
+                            //                         ),
+                            //                       )
+                            //                     ],
+                            //                   ),
+                            //                 )
+                            //             ],
+                            //           ),
+                            //         ),
+                            //       )
+                            //     : Container(),
 
                             SizedBox(
                               width: media.width * 0.7,
@@ -318,11 +319,10 @@ class _NavDrawerState extends State<NavDrawer> {
                                       context,
                                       MaterialPageRoute(
                                           builder: (context) =>
-                                              const History()));
+                                              const MyDeliveries()));
                                 },
-                                text: languages[choosenLanguage]
-                                    ['text_enable_history'],
-                                icon: Icons.view_list_outlined,
+                                text: 'Minhas Entregas',
+                                icon: Icons.local_shipping_outlined,
                               ),
                             ),
 
@@ -611,6 +611,23 @@ class _NavDrawerState extends State<NavDrawer> {
                                 text: languages[choosenLanguage]
                                     ['text_settings'],
                                 icon: Icons.settings,
+                              ),
+                            ),
+
+                            //faq
+                            SizedBox(
+                              width: media.width * 0.7,
+                              child: NavMenu(
+                                onTap: () {
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const Faq()));
+                                },
+                                text: languages[choosenLanguage]
+                                    ['text_faq'],
+                                icon: Icons.help_outline,
                               ),
                             ),
 

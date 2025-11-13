@@ -811,4 +811,89 @@ class DeliveryService {
       return null;
     }
   }
+
+  // Buscar histórico de entregas do motorista
+  static Future<Map<String, dynamic>?> getDeliveryHistory({
+    String? startDate,
+    String? endDate,
+    String? companyId,
+    String? groupBy = 'day',
+  }) async {
+    try {
+      debugPrint('📜 Buscando histórico de entregas...');
+      debugPrint('📅 Período: $startDate até $endDate');
+      debugPrint('🏢 Empresa: ${companyId ?? "Todas"}');
+      debugPrint('📊 Agrupar por: $groupBy');
+
+      final token = await LocalStorageService.getAccessToken();
+      if (token == null) {
+        debugPrint('❌ Token não encontrado');
+        return null;
+      }
+
+      // Obter driver ID do LocalStorage
+      final driverData = await LocalStorageService.getDriverData();
+      if (driverData == null) {
+        debugPrint('❌ Dados do motorista não encontrados');
+        return null;
+      }
+      final driverId = driverData['id'] as String;
+      debugPrint('👤 Driver ID obtido: $driverId');
+
+      // Construir query parameters
+      final queryParams = <String, String>{};
+      if (startDate != null && startDate.isNotEmpty) {
+        queryParams['startDate'] = startDate;
+      }
+      if (endDate != null && endDate.isNotEmpty) {
+        queryParams['endDate'] = endDate;
+      }
+      if (companyId != null && companyId.isNotEmpty) {
+        queryParams['companyId'] = companyId;
+      }
+      if (groupBy != null && groupBy.isNotEmpty) {
+        queryParams['groupBy'] = groupBy;
+      }
+
+      final uri = Uri.parse('${url}api/driver/$driverId/deliveries')
+          .replace(queryParameters: queryParams);
+
+      debugPrint('📡 Chamando endpoint: $uri');
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      debugPrint('📥 Status Code: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        debugPrint('✅ Histórico carregado com sucesso');
+        debugPrint('📊 Total de entregas: ${jsonResponse['total']}');
+        debugPrint('📦 Keys da resposta: ${jsonResponse.keys}');
+        if (jsonResponse['grouped'] != null && (jsonResponse['grouped'] as List).isNotEmpty) {
+          debugPrint('📦 Primeiro grupo: ${(jsonResponse['grouped'] as List)[0]}');
+          final firstGroup = (jsonResponse['grouped'] as List)[0];
+          if (firstGroup['deliveries'] != null && (firstGroup['deliveries'] as List).isNotEmpty) {
+            debugPrint('📦 Primeira entrega: ${(firstGroup['deliveries'] as List)[0]}');
+          }
+        }
+        debugPrint('📦 Stats: ${jsonResponse['stats']}');
+        return jsonResponse;
+      } else if (response.statusCode == 401) {
+        debugPrint('❌ ERRO DE AUTENTICAÇÃO - Token inválido ou expirado');
+      } else {
+        debugPrint('❌ Status code diferente de 200: ${response.statusCode}');
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('❌ Erro ao buscar histórico de entregas: $e');
+      return null;
+    }
+  }
 }

@@ -20,7 +20,19 @@
       "Bash(nul)",
       "Bash(dir:*)",
       "Bash(cat:*)",
-      "Bash(flutter analyze:*)"
+      "Bash(flutter analyze:*)",
+      "Bash(tree:*)",
+      "Bash(tasklist:*)",
+      "Bash(cmd /c \"tasklist | findstr flutter\")",
+      "Bash(flutter build:*)",
+      "Bash(flutter devices:*)",
+      "Bash(flutter uninstall:*)",
+      "Bash(adb:*)",
+      "Bash(flutter clean:*)",
+      "Bash(cmd /c \"rd /s /q build .dart_tool 2>nul & echo Caches limpos\")",
+      "Bash(flutter pub get:*)",
+      "Bash(flutter install:*)",
+      "Bash(taskkill:*)"
     ],
     "deny": [],
     "ask": []

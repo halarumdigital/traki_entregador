@@ -80,26 +80,40 @@ class Delivery {
 
   /// Criar a partir do formato snake_case da API
   factory Delivery.fromJson(Map<String, dynamic> json) {
+    // A API retorna objetos aninhados para company, customer e addresses
+    final company = json['company'] as Map<String, dynamic>?;
+    final customer = json['customer'] as Map<String, dynamic>?;
+    final addresses = json['addresses'] as Map<String, dynamic>?;
+
+    // Converter distância de metros para km
+    String? distanceKm;
+    if (json['distance'] != null) {
+      final distanceMeters = double.tryParse(json['distance'].toString());
+      if (distanceMeters != null) {
+        distanceKm = (distanceMeters / 1000).toStringAsFixed(1);
+      }
+    }
+
     return Delivery(
       requestId: json['id']?.toString() ?? '',
-      requestNumber: json['request_number']?.toString() ?? '',
-      companyName: json['company_name'],
-      companyPhone: json['company_phone'],
-      customerName: json['customer_name'],
-      customerWhatsapp: json['customer_whatsapp'],
+      requestNumber: json['requestNumber']?.toString() ?? json['request_number']?.toString() ?? '',
+      companyName: company?['name'] ?? json['company_name'],
+      companyPhone: company?['phone'] ?? json['company_phone'],
+      customerName: customer?['name'] ?? json['customer_name'],
+      customerWhatsapp: customer?['whatsapp'] ?? json['customer_whatsapp'],
       deliveryReference: json['delivery_reference'],
-      pickupAddress: json['pick_address'],
+      pickupAddress: addresses?['pickup'] ?? json['pick_address'],
       pickupLat: json['pick_lat'] != null ? double.tryParse(json['pick_lat'].toString()) : null,
       pickupLng: json['pick_lng'] != null ? double.tryParse(json['pick_lng'].toString()) : null,
-      deliveryAddress: json['drop_address'],
+      deliveryAddress: addresses?['dropoff'] ?? json['drop_address'],
       deliveryLat: json['drop_lat'] != null ? double.tryParse(json['drop_lat'].toString()) : null,
       deliveryLng: json['drop_lng'] != null ? double.tryParse(json['drop_lng'].toString()) : null,
-      distance: json['total_distance']?.toString(),
-      estimatedTime: json['estimated_time']?.toString() ?? json['total_time']?.toString(),
-      driverAmount: json['driver_amount']?.toString() ?? json['request_eta_amount']?.toString(),
+      distance: distanceKm ?? json['total_distance']?.toString(),
+      estimatedTime: json['time']?.toString() ?? json['estimated_time']?.toString() ?? json['total_time']?.toString(),
+      driverAmount: json['earnings']?.toString() ?? json['driver_amount']?.toString() ?? json['request_eta_amount']?.toString(),
       isTripStart: json['is_trip_start'] ?? false,
       needsReturn: json['needs_return'] ?? false,
-      deliveredAt: json['delivered_at'],
+      deliveredAt: json['completedAt'] ?? json['cancelledAt'] ?? json['delivered_at'],
       status: json['status'],
       hasMultipleStops: json['has_multiple_stops'] ?? false,
       stopsCount: json['stops_count'],
@@ -217,5 +231,139 @@ class Delivery {
       hasMultipleStops: hasMultipleStops ?? this.hasMultipleStops,
       stopsCount: stopsCount ?? this.stopsCount,
     );
+  }
+}
+
+// Modelos para o endpoint /api/driver/:driverId/deliveries
+
+/// Estatísticas gerais das entregas
+class DeliveryStats {
+  final int totalDeliveries;
+  final int completedDeliveries;
+  final int cancelledDeliveries;
+  final double totalEarnings;
+  final double totalDistance;
+  final int totalTime;
+  final double averageDistance;
+  final int averageTime;
+  final double averageEarnings;
+
+  DeliveryStats({
+    required this.totalDeliveries,
+    required this.completedDeliveries,
+    required this.cancelledDeliveries,
+    required this.totalEarnings,
+    required this.totalDistance,
+    required this.totalTime,
+    required this.averageDistance,
+    required this.averageTime,
+    required this.averageEarnings,
+  });
+
+  factory DeliveryStats.fromJson(Map<String, dynamic> json) {
+    // A API retorna distâncias em metros, precisamos converter para km
+    final totalDistanceMeters = double.tryParse(json['totalDistance']?.toString() ?? '0') ?? 0.0;
+    final averageDistanceMeters = double.tryParse(json['averageDistance']?.toString() ?? '0') ?? 0.0;
+
+    return DeliveryStats(
+      totalDeliveries: int.tryParse(json['totalDeliveries']?.toString() ?? '0') ?? 0,
+      completedDeliveries: int.tryParse(json['completedDeliveries']?.toString() ?? '0') ?? 0,
+      cancelledDeliveries: int.tryParse(json['cancelledDeliveries']?.toString() ?? '0') ?? 0,
+      totalEarnings: double.tryParse(json['totalEarnings']?.toString() ?? '0') ?? 0.0,
+      totalDistance: totalDistanceMeters / 1000, // Converter metros para km
+      totalTime: int.tryParse(json['totalTime']?.toString() ?? '0') ?? 0,
+      averageDistance: averageDistanceMeters / 1000, // Converter metros para km
+      averageTime: int.tryParse(json['averageTime']?.toString() ?? '0') ?? 0,
+      averageEarnings: double.tryParse(json['averageEarnings']?.toString() ?? '0') ?? 0.0,
+    );
+  }
+}
+
+/// Estatísticas de um grupo de entregas (por período)
+class GroupStats {
+  final int total;
+  final int completed;
+  final int cancelled;
+  final double earnings;
+  final double distance;
+  final int time;
+
+  GroupStats({
+    required this.total,
+    required this.completed,
+    required this.cancelled,
+    required this.earnings,
+    required this.distance,
+    required this.time,
+  });
+
+  factory GroupStats.fromJson(Map<String, dynamic> json) {
+    return GroupStats(
+      total: int.tryParse(json['total']?.toString() ?? '0') ?? 0,
+      completed: int.tryParse(json['completed']?.toString() ?? '0') ?? 0,
+      cancelled: int.tryParse(json['cancelled']?.toString() ?? '0') ?? 0,
+      earnings: double.tryParse(json['earnings']?.toString() ?? '0') ?? 0.0,
+      distance: double.tryParse(json['distance']?.toString() ?? '0') ?? 0.0,
+      time: int.tryParse(json['time']?.toString() ?? '0') ?? 0,
+    );
+  }
+}
+
+/// Grupo de entregas por período
+class DeliveryGroup {
+  final String period;
+  final List<Delivery> deliveries;
+  final GroupStats stats;
+
+  DeliveryGroup({
+    required this.period,
+    required this.deliveries,
+    required this.stats,
+  });
+
+  factory DeliveryGroup.fromJson(Map<String, dynamic> json) {
+    return DeliveryGroup(
+      period: json['period']?.toString() ?? '',
+      deliveries: (json['deliveries'] as List<dynamic>?)
+              ?.map((e) => Delivery.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      stats: GroupStats.fromJson(json['stats'] ?? {}),
+    );
+  }
+}
+
+/// Resposta completa do endpoint de entregas
+class DeliveryHistoryResponse {
+  final bool success;
+  final String driverId;
+  final DeliveryStats stats;
+  final List<DeliveryGroup> grouped;
+  final int total;
+
+  DeliveryHistoryResponse({
+    required this.success,
+    required this.driverId,
+    required this.stats,
+    required this.grouped,
+    required this.total,
+  });
+
+  factory DeliveryHistoryResponse.fromJson(Map<String, dynamic> json) {
+    return DeliveryHistoryResponse(
+      success: json['success'] ?? false,
+      driverId: json['driverId']?.toString() ?? '',
+      stats: DeliveryStats.fromJson(json['stats'] ?? {}),
+      grouped: (json['grouped'] as List<dynamic>?)
+              ?.map((e) => DeliveryGroup.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      total: int.tryParse(json['total']?.toString() ?? '0') ?? 0,
+    );
+  }
+
+  /// Retorna todas as entregas de todos os grupos em uma única lista
+  List<Delivery> get allDeliveries {
+    return grouped.expand((group) => group.deliveries).toList();
   }
 }

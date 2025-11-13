@@ -4,7 +4,20 @@
       "Bash(cmd /c \"dir \\.\\pipe\\ 2>nul\")",
       "Bash(powershell -Command \"[System.IO.Directory]::GetFiles(''\\\\.\\pipe\\'') | Select-String ''flutter''\")",
       "Bash(powershell -Command:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(flutter pub add:*)",
+      "Bash(findstr:*)",
+      "Bash(git checkout:*)",
+      "Bash(powershell:*)",
+      "Bash(flutter run:*)",
+      "Bash(timeout 5 cmd:*)",
+      "Bash(cmd /c \"dir \\.\\pipe\\ 2>nul | findstr flutter\")",
+      "Bash(cmd)",
+      "Bash(taskkill /F /PID 15819)",
+      "Bash(timeout:*)",
+      "Bash(flutter_input.txt)",
+      "Bash(dir /B *.md *.ps1 *.patch nul 2)",
+      "Bash(nul)"
     ],
     "deny": [],
     "ask": []

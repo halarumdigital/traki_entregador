@@ -69,6 +69,7 @@ dependencies:
   android_intent_plus: ^5.3.0
   mask_text_input_formatter: ^2.9.0
   flutter_secure_storage: ^9.2.2
+  provider: ^6.1.5+1
 
 dependency_overrides:
 #  wake_lock package depend on package_info latest version but we used lower version so it ovverride

@@ -11,6 +11,8 @@ import '../services/delivery_service.dart';
 import '../services/location_permission_service.dart';
 import 'driver_profile_screen.dart';
 import 'active_delivery_screen.dart';
+import 'delivery_with_stops_screen.dart';
+import '../models/delivery.dart';
 import 'NavigatorPages/promotions.dart';
 
 class HomeSimple extends StatefulWidget {
@@ -912,17 +914,65 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: () async {
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ActiveDeliveryScreen(
-                  delivery: delivery,
+            // Verificar se é uma entrega com múltiplas paradas já retirada
+            final deliveryAddress = delivery['deliveryAddress'] ?? '';
+            final hasMultipleStops = deliveryAddress.toString().contains(' | ');
+            final isTripStart = delivery['isTripStart'] ?? false;
+
+            // Se já foi retirada e tem múltiplas paradas, ir direto para a tela de stops
+            if (isTripStart && hasMultipleStops) {
+              debugPrint('📍 Entrega com múltiplas paradas já retirada, indo direto para tela de stops');
+
+              // Criar objeto Delivery
+              final stopsCount = deliveryAddress.toString().split(' | ').length;
+              final deliveryObj = Delivery(
+                requestId: delivery['requestId']?.toString() ?? '',
+                requestNumber: delivery['requestNumber']?.toString() ?? '',
+                companyName: delivery['companyName'],
+                companyPhone: delivery['companyPhone'],
+                customerName: delivery['customerName'],
+                customerWhatsapp: delivery['customerWhatsapp'],
+                deliveryReference: delivery['deliveryReference'],
+                pickupAddress: delivery['pickupAddress'],
+                pickupLat: delivery['pickupLat'] != null ? double.tryParse(delivery['pickupLat'].toString()) : null,
+                pickupLng: delivery['pickupLng'] != null ? double.tryParse(delivery['pickupLng'].toString()) : null,
+                deliveryAddress: deliveryAddress.toString(),
+                deliveryLat: delivery['deliveryLat'] != null ? double.tryParse(delivery['deliveryLat'].toString()) : null,
+                deliveryLng: delivery['deliveryLng'] != null ? double.tryParse(delivery['deliveryLng'].toString()) : null,
+                distance: delivery['distance']?.toString(),
+                estimatedTime: delivery['estimatedTime']?.toString(),
+                driverAmount: delivery['driverAmount']?.toString(),
+                isTripStart: true,
+                needsReturn: delivery['needsReturn'] ?? false,
+                hasMultipleStops: true,
+                stopsCount: stopsCount,
+              );
+
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DeliveryWithStopsScreen(delivery: deliveryObj),
                 ),
-              ),
-            );
-            // Recarregar entregas após voltar
-            if (result != null || mounted) {
-              _loadCurrentDelivery();
+              );
+
+              // Recarregar entregas após voltar
+              if (result != null || mounted) {
+                _loadCurrentDelivery();
+              }
+            } else {
+              // Ir para tela normal de entrega ativa
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ActiveDeliveryScreen(
+                    delivery: delivery,
+                  ),
+                ),
+              );
+              // Recarregar entregas após voltar
+              if (result != null || mounted) {
+                _loadCurrentDelivery();
+              }
             }
           },
           child: Padding(

@@ -24,6 +24,54 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
   StreamSubscription<Map<String, String>>? _takenSubscription;
   late final String? _requestId;
 
+  // Detectar se tem múltiplas paradas baseado no dropoffAddress
+  bool _hasMultipleStops() {
+    final dropoffAddress = widget.data['dropoffAddress'] ?? '';
+    return dropoffAddress.contains(' | ');
+  }
+
+  // Extrair apenas o primeiro endereço de entrega e remover nome do cliente
+  String _getFirstStopAddress() {
+    final dropoffAddress = widget.data['dropoffAddress'] ?? '';
+    String firstAddress;
+
+    if (dropoffAddress.contains(' | ')) {
+      firstAddress = dropoffAddress.split(' | ')[0];
+    } else {
+      firstAddress = dropoffAddress;
+    }
+
+    // Remover nome do cliente [nome]
+    firstAddress = firstAddress.replaceFirst(RegExp(r'^\[.*?\]\s*'), '');
+
+    // Remover WhatsApp [WhatsApp: xxx]
+    firstAddress = firstAddress.replaceAll(RegExp(r'\[WhatsApp:\s*[^\]]+\]\s*'), '');
+
+    // Remover referência [Ref: xxx]
+    firstAddress = firstAddress.replaceAll(RegExp(r'\[Ref:\s*[^\]]+\]\s*'), '');
+
+    // Limpar endereço - remover cidade, estado e país
+    firstAddress = firstAddress
+        .replaceAll(RegExp(r',?\s*Brasil$', caseSensitive: false), '')
+        .replaceAll(RegExp(r',?\s*SC\b', caseSensitive: false), '')
+        .replaceAll(RegExp(r',?\s*Joaçaba\s*-?\s*', caseSensitive: false), '')
+        .trim();
+
+    // Remover padrão [nome] do início do endereço (caso ainda tenha algum)
+    // Exemplo: "[gilliard1] Rua..." -> "Rua..."
+    final regex = RegExp(r'^\[.*?\]\s*');
+    return firstAddress.replaceAll(regex, '');
+  }
+
+  // Contar número de paradas
+  int _getStopsCount() {
+    final dropoffAddress = widget.data['dropoffAddress'] ?? '';
+    if (dropoffAddress.contains(' | ')) {
+      return dropoffAddress.split(' | ').length;
+    }
+    return 1;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -31,6 +79,8 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
     debugPrint('📦 Dados recebidos no modal: ${widget.data}');
     debugPrint('🔍 needs_return: ${widget.data['needs_return']}');
     debugPrint('🔍 needsReturn: ${widget.data['needsReturn']}');
+    debugPrint('🛣️ Múltiplas paradas: ${_hasMultipleStops()}');
+    debugPrint('🛣️ Número de paradas: ${_getStopsCount()}');
 
     _requestId = _resolveRequestId(widget.data);
     final cancelledBeforeInit = _requestId != null &&
@@ -595,6 +645,40 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
               ),
               const SizedBox(height: 16),
 
+              // Múltiplas Paradas (quando detectado no dropoffAddress)
+              if (_hasMultipleStops())
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.purple,
+                      width: 2,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.route,
+                        color: Colors.purple,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${_getStopsCount()} paradas',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.purple,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
               // Endereços
               _buildAddressRow(
                 Icons.place,
@@ -603,12 +687,23 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
                 widget.data['pickupAddress'] ?? '',
               ),
               const SizedBox(height: 8),
-              _buildAddressRow(
-                Icons.flag,
-                Colors.red,
-                'Entrega',
-                widget.data['dropoffAddress'] ?? '',
-              ),
+
+              // Entrega: mostrar apenas primeira parada se tem múltiplas
+              if (_hasMultipleStops())
+                _buildAddressRow(
+                  Icons.flag,
+                  Colors.purple,
+                  'Primeira parada',
+                  _getFirstStopAddress(),
+                )
+              else
+                _buildAddressRow(
+                  Icons.flag,
+                  Colors.red,
+                  'Entrega',
+                  widget.data['dropoffAddress'] ?? '',
+                ),
+
               const SizedBox(height: 16),
 
               // Informações da entrega

@@ -17,6 +17,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'services/notification_service.dart';
 import 'utils/notification_handler.dart';
 import 'dart:io';
+import 'package:provider/provider.dart';
+import 'providers/delivery_stop_provider.dart';
 
 // Variável global para armazenar notificação pendente
 Map<String, dynamic>? pendingNotificationData;
@@ -210,30 +212,35 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     platform = Theme.of(context).platform;
 
-    return GestureDetector(
-        onTap: () {
-          //remove keyboard on touching anywhere on the screen.
-          FocusScopeNode currentFocus = FocusScope.of(context);
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => DeliveryStopProvider()),
+      ],
+      child: GestureDetector(
+          onTap: () {
+            //remove keyboard on touching anywhere on the screen.
+            FocusScopeNode currentFocus = FocusScope.of(context);
 
-          if (!currentFocus.hasPrimaryFocus) {
-            currentFocus.unfocus();
-            FocusManager.instance.primaryFocus?.unfocus();
-          }
-        },
-        child: MaterialApp(
-          navigatorKey: globalNavigatorKey,
-          debugShowCheckedModeBanner: false,
-          title: 'product name',
-          theme: ThemeData(),
-          home: const SplashScreen(),
-          builder: (context, child) {
-            return MediaQuery(
-              data: MediaQuery.of(context)
-                  .copyWith(textScaler: const TextScaler.linear(1.0)),
-              child: child!,
-            );
+            if (!currentFocus.hasPrimaryFocus) {
+              currentFocus.unfocus();
+              FocusManager.instance.primaryFocus?.unfocus();
+            }
           },
-        ));
+          child: MaterialApp(
+            navigatorKey: globalNavigatorKey,
+            debugShowCheckedModeBanner: false,
+            title: 'product name',
+            theme: ThemeData(),
+            home: const SplashScreen(),
+            builder: (context, child) {
+              return MediaQuery(
+                data: MediaQuery.of(context)
+                    .copyWith(textScaler: const TextScaler.linear(1.0)),
+                child: child!,
+              );
+            },
+          )),
+    );
   }
 }
 

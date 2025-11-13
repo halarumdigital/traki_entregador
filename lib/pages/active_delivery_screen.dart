@@ -3,6 +3,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/delivery_service.dart';
 import '../styles/styles.dart';
 import 'rate_company_screen.dart';
+import 'delivery_with_stops_screen.dart';
+import '../models/delivery.dart';
 
 class ActiveDeliveryScreen extends StatefulWidget {
   final Map<String, dynamic> delivery;
@@ -200,6 +202,57 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
               backgroundColor: Colors.green,
             ),
           );
+
+          // Se completou a retirada e tem múltiplas paradas, redirecionar para DeliveryWithStopsScreen
+          if (newStatus == 'picked_up') {
+            final dropoffAddress = _delivery['dropoffAddress'] ??
+                                  _delivery['dropoff_address'] ??
+                                  _delivery['deliveryAddress'] ??
+                                  _delivery['delivery_address'] ?? '';
+            final hasMultipleStops = dropoffAddress.toString().contains(' | ');
+
+            if (hasMultipleStops) {
+              await Future.delayed(const Duration(milliseconds: 500));
+              if (mounted) {
+                debugPrint('🔄 Redirecionando para tela de múltiplas paradas após retirada...');
+
+                // Contar número de paradas
+                final stopsCount = dropoffAddress.toString().split(' | ').length;
+
+                // Criar objeto Delivery para passar à tela
+                final delivery = Delivery(
+                  requestId: _delivery['id']?.toString() ??
+                             _delivery['_id']?.toString() ??
+                             _delivery['deliveryId']?.toString() ??
+                             _delivery['requestId']?.toString() ?? '',
+                  requestNumber: _delivery['requestNumber']?.toString() ?? '',
+                  companyName: _delivery['companyName'],
+                  customerName: _delivery['customerName'],
+                  customerWhatsapp: _delivery['customerWhatsapp'],
+                  deliveryReference: _delivery['deliveryReference'],
+                  pickupAddress: _delivery['pickupAddress'],
+                  pickupLat: _delivery['pickupLat'] != null ? double.tryParse(_delivery['pickupLat'].toString()) : null,
+                  pickupLng: _delivery['pickupLng'] != null ? double.tryParse(_delivery['pickupLng'].toString()) : null,
+                  deliveryAddress: dropoffAddress.toString(),
+                  deliveryLat: _delivery['deliveryLat'] != null ? double.tryParse(_delivery['deliveryLat'].toString()) : null,
+                  deliveryLng: _delivery['deliveryLng'] != null ? double.tryParse(_delivery['deliveryLng'].toString()) : null,
+                  distance: _delivery['distance']?.toString(),
+                  estimatedTime: _delivery['estimatedTime']?.toString(),
+                  driverAmount: _delivery['driverAmount']?.toString(),
+                  isTripStart: true,
+                  hasMultipleStops: true,
+                  stopsCount: stopsCount,
+                );
+
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => DeliveryWithStopsScreen(delivery: delivery),
+                  ),
+                );
+              }
+              return; // Retornar para não executar o código abaixo
+            }
+          }
 
           // Se completou, mostrar tela de avaliação
           if (newStatus == 'completed') {

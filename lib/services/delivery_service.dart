@@ -763,4 +763,52 @@ class DeliveryService {
       return null;
     }
   }
+
+  // Buscar stops de uma entrega
+  static Future<List<Map<String, dynamic>>?> getDeliveryStops(String deliveryId) async {
+    try {
+      debugPrint('🛣️ Buscando stops da entrega: $deliveryId');
+
+      final token = await LocalStorageService.getAccessToken();
+      if (token == null) {
+        debugPrint('❌ Token não encontrado');
+        return null;
+      }
+
+      final endpoint = '${url}api/v1/driver/deliveries/$deliveryId/stops';
+      debugPrint('📡 Chamando endpoint: $endpoint');
+
+      final response = await http.get(
+        Uri.parse(endpoint),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      debugPrint('📥 Status Code: ${response.statusCode}');
+      debugPrint('📦 Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        debugPrint('📋 Response JSON: $jsonResponse');
+
+        if (jsonResponse['success'] == true) {
+          final stopsData = jsonResponse['data'] as List;
+          debugPrint('✅ ${stopsData.length} stops carregados');
+          return stopsData.map((stop) => stop as Map<String, dynamic>).toList();
+        }
+      } else if (response.statusCode == 401) {
+        debugPrint('❌ ERRO DE AUTENTICAÇÃO - Token inválido ou expirado');
+        debugPrint('❌ Response: ${response.body}');
+      } else {
+        debugPrint('❌ Status code diferente de 200: ${response.statusCode}');
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('❌ Erro ao buscar stops: $e');
+      return null;
+    }
+  }
 }

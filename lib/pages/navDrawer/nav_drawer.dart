@@ -7,6 +7,7 @@ import 'package:flutter_driver/pages/NavigatorPages/settings.dart';
 import 'package:flutter_driver/pages/NavigatorPages/support.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../functions/functions.dart';
+import '../../services/local_storage_service.dart';
 import '../../styles/styles.dart';
 import '../../translation/translation.dart';
 import '../../widgets/widgets.dart';
@@ -24,7 +25,6 @@ import '../NavigatorPages/sos.dart';
 import '../NavigatorPages/walletpage.dart';
 import '../login/landingpage.dart';
 import '../login/login.dart';
-import '../onTripPage/map_page.dart';
 
 class NavDrawer extends StatefulWidget {
   const NavDrawer({super.key});
@@ -727,12 +727,19 @@ class _NavDrawerState extends State<NavDrawer> {
                               // padding: EdgeInsets.only(top: 100),
                               width: media.width * 0.7,
                               child: NavMenu(
-                                onTap: () {
-                                  setState(() {
-                                    logout = true;
-                                  });
-                                  valueNotifierHome.incrementNotifier();
-                                  Navigator.pop(context);
+                                onTap: () async {
+                                  // Executar logout no servidor
+                                  await userLogout();
+
+                                  // Limpar todos os dados da sessão
+                                  await LocalStorageService.clearSession();
+                                  userDetails.clear();
+                                  pref.remove('Bearer');
+
+                                  if (!context.mounted) return;
+
+                                  // Navegar para tela de login
+                                  navigateLogout();
                                 },
                                 text: languages[choosenLanguage]
                                     ['text_sign_out'],

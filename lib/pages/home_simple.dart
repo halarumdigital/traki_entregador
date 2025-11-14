@@ -19,6 +19,7 @@ import 'NavigatorPages/my_deliveries.dart';
 import 'NavigatorPages/notification.dart';
 import 'NavigatorPages/referral.dart';
 import 'NavigatorPages/support_tickets.dart';
+import 'login/login.dart';
 
 class HomeSimple extends StatefulWidget {
   const HomeSimple({Key? key}) : super(key: key);
@@ -749,9 +750,18 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                           style: TextStyle(color: Colors.red, fontSize: 16),
                         ),
                         onTap: () async {
+                          // Limpar todos os dados da sessão
                           await LocalStorageService.clearSession();
+                          userDetails.clear();
+                          pref.remove('Bearer');
+
                           if (context.mounted) {
-                            Navigator.pushReplacementNamed(context, '/login');
+                            // Navegar para tela de login removendo todas as rotas anteriores
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(builder: (context) => const Login()),
+                              (route) => false,
+                            );
                           }
                         },
                       ),

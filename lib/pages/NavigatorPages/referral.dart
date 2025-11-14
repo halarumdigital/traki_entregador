@@ -91,6 +91,10 @@ class _ReferralPageState extends State<ReferralPage> {
               _referrals = List<Map<String, dynamic>>.from(
                 data['referrals'].map((referral) => referral as Map<String, dynamic>)
               );
+              debugPrint('📋 Indicações recebidas: ${_referrals.length}');
+              if (_referrals.isNotEmpty) {
+                debugPrint('📋 Primeira indicação - Dados completos: ${_referrals.first}');
+              }
             }
           });
           debugPrint('✅ Código de indicação: $_referralCode');
@@ -579,6 +583,16 @@ Baixe o app e cadastre-se para começar a ganhar dinheiro fazendo entregas! 🚚
                                             final bool commissionPaid = referral['commissionPaid'] == true;
                                             final bool isQualified = commissionEarned > 0;
 
+                                            // Tenta obter o nome de diferentes campos possíveis
+                                            final String referredName = referral['referredName'] ??
+                                                                        referral['name'] ??
+                                                                        referral['driverName'] ??
+                                                                        referral['referred_name'] ??
+                                                                        referral['driver_name'] ??
+                                                                        'Motorista';
+
+                                            debugPrint('👤 Indicado: $referredName (campos disponíveis: ${referral.keys.toList()})');
+
                                             // Calcular progresso
                                             final int remaining = _minimumDeliveries - deliveriesCompleted;
                                             final double progress = _minimumDeliveries > 0
@@ -634,7 +648,7 @@ Baixe o app e cadastre-se para começar a ganhar dinheiro fazendo entregas! 🚚
                                                           crossAxisAlignment: CrossAxisAlignment.start,
                                                           children: [
                                                             Text(
-                                                              referral['referredName'] ?? 'Motorista',
+                                                              referredName,
                                                               style: GoogleFonts.notoSans(
                                                                 fontSize: media.width * sixteen,
                                                                 fontWeight: FontWeight.bold,

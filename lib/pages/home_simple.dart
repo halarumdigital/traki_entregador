@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/online_offline_toggle.dart';
 import '../styles/styles.dart';
 import '../functions/functions.dart';
@@ -750,18 +751,37 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                           style: TextStyle(color: Colors.red, fontSize: 16),
                         ),
                         onTap: () async {
-                          // Limpar todos os dados da sessão
-                          await LocalStorageService.clearSession();
-                          userDetails.clear();
-                          pref.remove('Bearer');
+                          debugPrint('🚪 Botão de sair clicado');
 
-                          if (context.mounted) {
-                            // Navegar para tela de login removendo todas as rotas anteriores
-                            Navigator.pushAndRemoveUntil(
-                              context,
-                              MaterialPageRoute(builder: (context) => const Login()),
-                              (route) => false,
-                            );
+                          try {
+                            // Limpar sessão do LocalStorageService
+                            debugPrint('🧹 Limpando LocalStorageService...');
+                            await LocalStorageService.clearSession();
+
+                            // Limpar userDetails
+                            debugPrint('🧹 Limpando userDetails...');
+                            userDetails.clear();
+
+                            // Limpar SharedPreferences
+                            debugPrint('🧹 Limpando SharedPreferences...');
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.remove('Bearer');
+                            await prefs.clear();
+
+                            debugPrint('✅ Dados limpos com sucesso');
+
+                            if (context.mounted) {
+                              debugPrint('🔄 Navegando para tela de login...');
+                              // Navegar para tela de login removendo todas as rotas anteriores
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(builder: (context) => const Login()),
+                                (route) => false,
+                              );
+                              debugPrint('✅ Navegação concluída');
+                            }
+                          } catch (e) {
+                            debugPrint('❌ Erro ao fazer logout: $e');
                           }
                         },
                       ),

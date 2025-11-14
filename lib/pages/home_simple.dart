@@ -18,6 +18,7 @@ import 'NavigatorPages/faq.dart';
 import 'NavigatorPages/my_deliveries.dart';
 import 'NavigatorPages/notification.dart';
 import 'NavigatorPages/referral.dart';
+import 'NavigatorPages/support_tickets.dart';
 
 class HomeSimple extends StatefulWidget {
   const HomeSimple({Key? key}) : super(key: key);
@@ -724,14 +725,19 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                       ),
                       Divider(height: 1, color: borderLines),
                       ListTile(
-                        leading: Icon(Icons.support_agent, color: buttonColor),
+                        leading: Icon(Icons.confirmation_number_outlined, color: buttonColor),
                         title: Text(
-                          'Ajuda',
+                          'Meus Tickets',
                           style: TextStyle(color: textColor, fontSize: 16),
                         ),
                         onTap: () {
                           Navigator.pop(context);
-                          // TODO: Navegar para tela de ajuda
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SupportTicketsPage(),
+                            ),
+                          );
                         },
                       ),
                       Divider(height: 1, color: borderLines),

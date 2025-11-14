@@ -8,6 +8,7 @@ import '../../styles/styles.dart';
 import '../../translation/translation.dart';
 import '../../widgets/widgets.dart';
 import 'adminchatpage.dart';
+import 'support_tickets.dart';
 
 class SupportPage extends StatefulWidget {
   const SupportPage({super.key});
@@ -156,6 +157,20 @@ class _SupportPageState extends State<SupportPage> {
                                 context,
                                 MaterialPageRoute(
                                     builder: (context) => const Faq()));
+                          },
+                        ),
+                        SizedBox(
+                          height: media.width * 0.02,
+                        ),
+                        //tickets de suporte
+                        SubMenu(
+                          icon: Icons.confirmation_number_outlined,
+                          text: 'Meus Tickets',
+                          onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => const SupportTicketsPage()));
                           },
                         ),
                         SizedBox(

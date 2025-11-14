@@ -42,7 +42,10 @@
       "Bash(find:*)",
       "Bash(\"f:\\fretus_driver\\lib\\pages\\NavigatorPages\\referral.dart\")",
       "Bash(cmd /c \"rd /s /q build .dart_tool android\\.gradle 2>nul & echo Caches removidos\")",
-      "Bash(r:*)"
+      "Bash(r:*)",
+      "Bash(/tmp/flutter_input.txt)",
+      "Bash(cd:*)",
+      "Bash(/tmp/flutter_input_fc3b44.txt)"
     ],
     "deny": [],
     "ask": []

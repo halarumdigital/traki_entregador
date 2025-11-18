@@ -3,6 +3,7 @@ import 'package:flutter_driver/pages/login/approval_status_screen.dart';
 import 'package:flutter_driver/pages/login/login.dart';
 import 'package:flutter_driver/styles/styles.dart';
 import 'package:flutter_driver/widgets/delivery_request_dialog.dart';
+import 'package:flutter_driver/widgets/intermunicipal_delivery_request_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/notification_service.dart';
 import '../services/delivery_service.dart';
@@ -14,14 +15,22 @@ class NotificationHandler {
   // Set para rastrear IDs de entregas que estão sendo processadas
   static final Set<String> _processingDeliveries = {};
 
+  // Flag para garantir que apenas um modal de entrega intermunicipal esteja aberto por vez
+  static bool _isIntermunicipalDialogOpen = false;
+
+  // Set para rastrear IDs de entregas intermunicipais que estão sendo processadas
+  static final Set<String> _processingIntermunicipalDeliveries = {};
+
   static void handleNotification(
     BuildContext context,
     Map<String, dynamic> data,
   ) {
     final type = data['type'] as String?;
 
-    debugPrint('🎯 Processando notificação do tipo: $type');
-    debugPrint('📦 Dados: $data');
+    debugPrint('🎯 ===== PROCESSANDO NOTIFICAÇÃO =====');
+    debugPrint('🎯 Tipo: $type');
+    debugPrint('📦 Todos os dados: $data');
+    debugPrint('📦 Keys disponíveis: ${data.keys.toList()}');
 
     switch (type) {
       case 'driver_approved':
@@ -50,9 +59,22 @@ class NotificationHandler {
         _handleDeliveryCancelled(context, data);
         break;
 
+      case 'nova_entrega_intermunicipal':
+      case 'new_intermunicipal_delivery':
+      case 'NOVA_ENTREGA_INTERMUNICIPAL':
+        _handleIntermunicipalDeliveryRequest(context, data);
+        break;
+
       default:
         debugPrint('⚠️ Tipo de notificação desconhecido: $type');
-        _showGenericNotification(context, data);
+
+        // Tentar detectar se é entrega intermunicipal pelos dados
+        if (data.containsKey('entregaId') && data.containsKey('rotaNome')) {
+          debugPrint('🔍 Detectado possível entrega intermunicipal pelos dados - processando');
+          _handleIntermunicipalDeliveryRequest(context, data);
+        } else {
+          _showGenericNotification(context, data);
+        }
     }
   }
 
@@ -360,6 +382,70 @@ class NotificationHandler {
       _processingDeliveries.remove(requestId);
       debugPrint('✅ Modal de entrega fechado');
     });
+  }
+
+  // Nova solicitação de entrega intermunicipal → Mostrar modal
+  static void _handleIntermunicipalDeliveryRequest(
+    BuildContext context,
+    Map<String, dynamic> data,
+  ) {
+    try {
+      debugPrint('🛣️ ===== NOVA SOLICITAÇÃO DE ENTREGA INTERMUNICIPAL =====');
+      debugPrint('📦 Dados recebidos no notification_handler: $data');
+      debugPrint('🔍 Context disponível: ${context != null}');
+
+      // Extrair entregaId
+      final entregaId = data['entregaId'] as String?;
+      debugPrint('🆔 EntregaId extraído: $entregaId');
+
+      if (entregaId == null) {
+        debugPrint('❌ EntregaId não encontrado na notificação. Ignorando.');
+        debugPrint('❌ Keys disponíveis: ${data.keys.toList()}');
+        return;
+      }
+
+      // Verificar se já existe um modal aberto
+      if (_isIntermunicipalDialogOpen) {
+        debugPrint('⚠️ Modal de entrega intermunicipal já está aberto. Ignorando nova solicitação.');
+        return;
+      }
+
+      // Verificar se esta entrega já está sendo processada
+      if (_processingIntermunicipalDeliveries.contains(entregaId)) {
+        debugPrint('⚠️ Entrega intermunicipal $entregaId já está sendo processada. Ignorando duplicata.');
+        return;
+      }
+
+      // Marcar como sendo processada
+      _processingIntermunicipalDeliveries.add(entregaId);
+      debugPrint('✅ Entrega marcada como sendo processada: $entregaId');
+
+      debugPrint('🛣️ Tentando mostrar modal de nova solicitação de entrega intermunicipal');
+      _isIntermunicipalDialogOpen = true;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          debugPrint('🎨 Builder do modal IntermunicipalDeliveryRequestDialog chamado');
+          return IntermunicipalDeliveryRequestDialog(data: data);
+        },
+      ).then((_) {
+        // Quando o modal fechar, marcar como disponível
+        _isIntermunicipalDialogOpen = false;
+        _processingIntermunicipalDeliveries.remove(entregaId);
+        debugPrint('✅ Modal de entrega intermunicipal fechado');
+      });
+
+      debugPrint('✅ showDialog() chamado com sucesso');
+    } catch (e, stackTrace) {
+      debugPrint('❌ ERRO ao processar notificação de entrega intermunicipal: $e');
+      debugPrint('❌ StackTrace: $stackTrace');
+      _isIntermunicipalDialogOpen = false;
+      if (data['entregaId'] != null) {
+        _processingIntermunicipalDeliveries.remove(data['entregaId']);
+      }
+    }
   }
 
   // Entrega cancelada pelo administrador → Voltar para home

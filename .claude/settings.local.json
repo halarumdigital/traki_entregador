@@ -45,7 +45,8 @@
       "Bash(r:*)",
       "Bash(/tmp/flutter_input.txt)",
       "Bash(cd:*)",
-      "Bash(/tmp/flutter_input_fc3b44.txt)"
+      "Bash(/tmp/flutter_input_fc3b44.txt)",
+      "Bash(printf:*)"
     ],
     "deny": [],
     "ask": []

@@ -23,6 +23,9 @@ import '../NavigatorPages/notification.dart';
 import '../NavigatorPages/referral.dart';
 import '../NavigatorPages/sos.dart';
 import '../NavigatorPages/walletpage.dart';
+import '../NavigatorPages/minhas_rotas.dart';
+import '../NavigatorPages/minhas_viagens.dart';
+import '../NavigatorPages/entregas_disponiveis_rotas.dart';
 import '../login/landingpage.dart';
 import '../login/login.dart';
 
@@ -325,6 +328,68 @@ class _NavDrawerState extends State<NavDrawer> {
                                 icon: Icons.local_shipping_outlined,
                               ),
                             ),
+
+                            // Seção Rotas Intermunicipais
+                            Container(
+                              width: media.width * 0.7,
+                              padding: EdgeInsets.only(
+                                top: media.width * 0.07,
+                                bottom: media.width * 0.02,
+                              ),
+                              child: MyText(
+                                text: 'ROTAS INTERMUNICIPAIS',
+                                size: media.width * twelve,
+                                fontweight: FontWeight.bold,
+                                color: textColor.withOpacity(0.6),
+                              ),
+                            ),
+
+                            SizedBox(
+                              width: media.width * 0.7,
+                              child: NavMenu(
+                                onTap: () {
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const MinhasRotasScreen()));
+                                },
+                                text: 'Minhas Rotas',
+                                icon: Icons.route,
+                              ),
+                            ),
+
+                            SizedBox(
+                              width: media.width * 0.7,
+                              child: NavMenu(
+                                onTap: () {
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const EntregasDisponiveisRotasScreen()));
+                                },
+                                text: 'Entregas Disponíveis',
+                                icon: Icons.inventory_2_outlined,
+                              ),
+                            ),
+
+                            SizedBox(
+                              width: media.width * 0.7,
+                              child: NavMenu(
+                                onTap: () {
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const MinhasViagensScreen()));
+                                },
+                                text: 'Minhas Viagens',
+                                icon: Icons.map_outlined,
+                              ),
+                            ),
+
+                            // Fim da seção de rotas
 
                             (userDetails['role'] != 'owner')
                                 ? ValueListenableBuilder(

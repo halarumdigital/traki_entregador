@@ -28,7 +28,8 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
     // Verificar se é notificação de entrega
     final isDeliveryNotification = message.data['type'] == 'new_delivery' ||
-                                     message.data['type'] == 'new_delivery_request';
+                                     message.data['type'] == 'new_delivery_request' ||
+                                     message.data['type'] == 'nova_entrega_intermunicipal';
 
     // 🔥 ARMAZENAR DADOS DA NOTIFICAÇÃO EM ARQUIVO PARA PROCESSAR AO DESBLOQUEAR
     // Usando arquivo ao invés de SharedPreferences porque o handler roda em isolado separado
@@ -412,7 +413,9 @@ class NotificationService {
     final notificationType = notificationData['type'] as String?;
 
     // Se for notificação de entrega, processar imediatamente
-    if (notificationType == 'new_delivery' || notificationType == 'new_delivery_request') {
+    if (notificationType == 'new_delivery' ||
+        notificationType == 'new_delivery_request' ||
+        notificationType == 'nova_entrega_intermunicipal') {
       debugPrint('🚚 Notificação de entrega detectada - processando imediatamente');
 
       // Sempre mostrar notificação local (para aparecer na barra de notificações)
@@ -529,7 +532,8 @@ class NotificationService {
 
     // Para notificações de entrega, usar som insistente e vibração contínua
     final isDeliveryNotification = message.data['type'] == 'new_delivery' ||
-                                     message.data['type'] == 'new_delivery_request';
+                                     message.data['type'] == 'new_delivery_request' ||
+                                     message.data['type'] == 'nova_entrega_intermunicipal';
 
     final androidDetails = isDeliveryNotification
         ? AndroidNotificationDetails(

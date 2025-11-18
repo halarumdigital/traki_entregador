@@ -20,6 +20,9 @@ import 'NavigatorPages/my_deliveries.dart';
 import 'NavigatorPages/notification.dart';
 import 'NavigatorPages/referral.dart';
 import 'NavigatorPages/support_tickets.dart';
+import 'NavigatorPages/entregas_ativas.dart';
+import 'NavigatorPages/minhas_rotas.dart';
+import 'NavigatorPages/minhas_viagens.dart';
 import 'login/login.dart';
 
 class HomeSimple extends StatefulWidget {
@@ -635,6 +638,67 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                         leading: Icon(Icons.local_shipping_outlined, color: buttonColor),
                         title: Text(
                           'Minhas Entregas',
+                          style: TextStyle(color: textColor, fontSize: 16),
+                        ),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const EntregasAtivasScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      Divider(height: 1, color: borderLines),
+                      ExpansionTile(
+                        leading: Icon(Icons.route, color: buttonColor),
+                        title: Text(
+                          'Rotas',
+                          style: TextStyle(color: textColor, fontSize: 16),
+                        ),
+                        iconColor: buttonColor,
+                        collapsedIconColor: buttonColor,
+                        children: [
+                          ListTile(
+                            leading: SizedBox(width: 40),
+                            title: Text(
+                              'Minhas Rotas',
+                              style: TextStyle(color: textColor, fontSize: 15),
+                            ),
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const MinhasRotasScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                          ListTile(
+                            leading: SizedBox(width: 40),
+                            title: Text(
+                              'Minhas Viagens',
+                              style: TextStyle(color: textColor, fontSize: 15),
+                            ),
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const MinhasViagensScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      Divider(height: 1, color: borderLines),
+                      ListTile(
+                        leading: Icon(Icons.history, color: buttonColor),
+                        title: Text(
+                          'Histórico',
                           style: TextStyle(color: textColor, fontSize: 16),
                         ),
                         onTap: () {

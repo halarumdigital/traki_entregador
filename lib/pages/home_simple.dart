@@ -19,6 +19,7 @@ import 'NavigatorPages/faq.dart';
 import 'NavigatorPages/my_deliveries.dart';
 import 'NavigatorPages/notification.dart';
 import 'NavigatorPages/referral.dart';
+import 'NavigatorPages/referral_companies.dart';
 import 'NavigatorPages/support_tickets.dart';
 import 'NavigatorPages/entregas_ativas.dart';
 import 'NavigatorPages/minhas_rotas.dart';
@@ -729,21 +730,48 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                         },
                       ),
                       Divider(height: 1, color: borderLines),
-                      ListTile(
+                      ExpansionTile(
                         leading: Icon(Icons.people_alt_outlined, color: buttonColor),
                         title: Text(
-                          'Indicações',
+                          'Indicação',
                           style: TextStyle(color: textColor, fontSize: 16),
                         ),
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ReferralPage(),
+                        iconColor: buttonColor,
+                        collapsedIconColor: buttonColor,
+                        children: [
+                          ListTile(
+                            leading: SizedBox(width: 40),
+                            title: Text(
+                              'Entregadores',
+                              style: TextStyle(color: textColor, fontSize: 15),
                             ),
-                          );
-                        },
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ReferralPage(),
+                                ),
+                              );
+                            },
+                          ),
+                          ListTile(
+                            leading: SizedBox(width: 40),
+                            title: Text(
+                              'Empresas',
+                              style: TextStyle(color: textColor, fontSize: 15),
+                            ),
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ReferralCompaniesPage(),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       ),
                       Divider(height: 1, color: borderLines),
                       ListTile(

@@ -6,7 +6,6 @@ import 'package:flutter_driver/widgets/delivery_request_dialog.dart';
 import 'package:flutter_driver/widgets/intermunicipal_delivery_request_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/notification_service.dart';
-import '../services/delivery_service.dart';
 
 class NotificationHandler {
   // Flag para garantir que apenas um modal de entrega esteja aberto por vez

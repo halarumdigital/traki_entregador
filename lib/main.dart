@@ -1,5 +1,4 @@
 // import 'package:device_apps/device_apps.dart';
-import 'package:android_intent_plus/android_intent.dart';
 // import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,7 +8,6 @@ import 'package:quick_nav/quick_nav.dart';
 import 'package:workmanager/workmanager.dart';
 import 'functions/functions.dart';
 import 'functions/notifications.dart';
-import 'pages/loadingPage/loadingpage.dart';
 import 'pages/splash_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 // import 'package:bubble_head/bubble.dart';

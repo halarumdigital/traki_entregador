@@ -24,7 +24,7 @@ class _ConfigurarRotaDialogState extends State<ConfigurarRotaDialog> {
   final _capacidadePacotesController = TextEditingController();
   final _capacidadePesoController = TextEditingController();
   TimeOfDay _horarioSaida = const TimeOfDay(hour: 8, minute: 0);
-  Set<int> _diasSelecionados = {1, 2, 3, 4, 5}; // Segunda a Sexta por padrão
+  final Set<int> _diasSelecionados = {1, 2, 3, 4, 5}; // Segunda a Sexta por padrão
   bool _isLoading = false;
 
   final Map<int, String> _diasSemana = {

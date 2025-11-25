@@ -24,10 +24,11 @@ import 'NavigatorPages/support_tickets.dart';
 import 'NavigatorPages/entregas_ativas.dart';
 import 'NavigatorPages/minhas_rotas.dart';
 import 'NavigatorPages/minhas_viagens.dart';
+import 'NavigatorPages/carteira_page.dart';
 import 'login/login.dart';
 
 class HomeSimple extends StatefulWidget {
-  const HomeSimple({Key? key}) : super(key: key);
+  const HomeSimple({super.key});
 
   @override
   State<HomeSimple> createState() => _HomeSimpleState();
@@ -630,6 +631,23 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                             context,
                             MaterialPageRoute(
                               builder: (context) => const DriverProfileScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      Divider(height: 1, color: borderLines),
+                      ListTile(
+                        leading: Icon(Icons.account_balance_wallet, color: buttonColor),
+                        title: Text(
+                          'Carteira',
+                          style: TextStyle(color: textColor, fontSize: 16),
+                        ),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const CarteiraPage(),
                             ),
                           );
                         },

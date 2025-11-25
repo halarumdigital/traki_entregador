@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import '../../functions/functions.dart';
@@ -22,6 +21,18 @@ class _RegisterStep1PersonalState extends State<RegisterStep1Personal> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
   final TextEditingController _referralCodeController = TextEditingController();
+  final TextEditingController _pixKeyController = TextEditingController();
+
+  String? _selectedPixKeyType;
+
+  // Opções de tipo de chave PIX
+  final List<Map<String, String>> pixKeyTypes = [
+    {'value': 'CPF', 'label': 'CPF'},
+    {'value': 'EMAIL', 'label': 'E-mail'},
+    {'value': 'PHONE', 'label': 'Telefone'},
+    {'value': 'CNPJ', 'label': 'CNPJ'},
+    {'value': 'EVP', 'label': 'Chave Aleatória'},
+  ];
 
   // Formatador de CPF: XXX.XXX.XXX-XX
   final cpfFormatter = MaskTextInputFormatter(
@@ -63,6 +74,66 @@ class _RegisterStep1PersonalState extends State<RegisterStep1Personal> {
     }
   }
 
+  String _getPixKeyHint() {
+    switch (_selectedPixKeyType) {
+      case 'CPF':
+        return '000.000.000-00';
+      case 'CNPJ':
+        return '00.000.000/0000-00';
+      case 'EMAIL':
+        return 'email@exemplo.com';
+      case 'PHONE':
+        return '+5511999999999';
+      case 'EVP':
+        return 'Chave aleatória';
+      default:
+        return 'Selecione o tipo primeiro';
+    }
+  }
+
+  TextInputType _getPixKeyKeyboardType() {
+    switch (_selectedPixKeyType) {
+      case 'CPF':
+      case 'CNPJ':
+      case 'PHONE':
+        return TextInputType.number;
+      case 'EMAIL':
+        return TextInputType.emailAddress;
+      default:
+        return TextInputType.text;
+    }
+  }
+
+  String? _validatePixKey(String value) {
+    switch (_selectedPixKeyType) {
+      case 'CPF':
+        final cpfRegex = RegExp(r'^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$');
+        if (!cpfRegex.hasMatch(value)) {
+          return 'CPF inválido';
+        }
+        break;
+      case 'CNPJ':
+        final cnpjRegex = RegExp(r'^\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}$');
+        if (!cnpjRegex.hasMatch(value)) {
+          return 'CNPJ inválido';
+        }
+        break;
+      case 'EMAIL':
+        final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+        if (!emailRegex.hasMatch(value)) {
+          return 'E-mail inválido';
+        }
+        break;
+      case 'PHONE':
+        final phoneRegex = RegExp(r'^\+?\d{10,14}$');
+        if (!phoneRegex.hasMatch(value.replaceAll(RegExp(r'[\s\-\(\)]'), ''))) {
+          return 'Telefone inválido';
+        }
+        break;
+    }
+    return null;
+  }
+
   bool _validateFields() {
     if (_nameController.text.trim().isEmpty) {
       setState(() => _error = 'Nome é obrigatório');
@@ -96,6 +167,19 @@ class _RegisterStep1PersonalState extends State<RegisterStep1Personal> {
       setState(() => _error = 'Senhas não conferem');
       return false;
     }
+    if (_selectedPixKeyType == null) {
+      setState(() => _error = 'Selecione o tipo da chave PIX');
+      return false;
+    }
+    if (_pixKeyController.text.trim().isEmpty) {
+      setState(() => _error = 'Chave PIX é obrigatória');
+      return false;
+    }
+    final pixKeyError = _validatePixKey(_pixKeyController.text.trim());
+    if (pixKeyError != null) {
+      setState(() => _error = pixKeyError);
+      return false;
+    }
     if (_selectedCityId == null) {
       setState(() => _error = 'Selecione uma cidade');
       return false;
@@ -123,6 +207,8 @@ class _RegisterStep1PersonalState extends State<RegisterStep1Personal> {
               'referralCode': _referralCodeController.text.trim().isNotEmpty
                 ? _referralCodeController.text.trim()
                 : null,
+              'pixKey': _pixKeyController.text.trim(),
+              'pixKeyType': _selectedPixKeyType,
             },
           ),
         ),
@@ -334,6 +420,62 @@ class _RegisterStep1PersonalState extends State<RegisterStep1Personal> {
                             ),
                             SizedBox(height: media.height * 0.02),
 
+                            // Tipo de Chave PIX
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: borderLines, width: 1.2),
+                              ),
+                              padding: EdgeInsets.symmetric(horizontal: media.width * 0.025),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  isExpanded: true,
+                                  value: _selectedPixKeyType,
+                                  hint: Text(
+                                    'Tipo da Chave PIX *',
+                                    style: GoogleFonts.notoSans(color: hintColor),
+                                  ),
+                                  items: pixKeyTypes.map((type) {
+                                    return DropdownMenuItem<String>(
+                                      value: type['value'],
+                                      child: Text(
+                                        type['label']!,
+                                        style: GoogleFonts.notoSans(color: textColor),
+                                      ),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedPixKeyType = value;
+                                      _pixKeyController.clear();
+                                      _error = '';
+                                    });
+                                  },
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: media.height * 0.02),
+
+                            // Chave PIX
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: borderLines, width: 1.2),
+                              ),
+                              padding: EdgeInsets.symmetric(horizontal: media.width * 0.025),
+                              child: TextField(
+                                controller: _pixKeyController,
+                                keyboardType: _getPixKeyKeyboardType(),
+                                decoration: InputDecoration(
+                                  hintText: 'Chave PIX * (${_getPixKeyHint()})',
+                                  hintStyle: GoogleFonts.notoSans(color: hintColor),
+                                  border: InputBorder.none,
+                                ),
+                                style: GoogleFonts.notoSans(color: textColor),
+                              ),
+                            ),
+                            SizedBox(height: media.height * 0.02),
+
                             // Código de Indicação (Opcional)
                             InputField(
                               textController: _referralCodeController,
@@ -484,6 +626,7 @@ class _RegisterStep1PersonalState extends State<RegisterStep1Personal> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _referralCodeController.dispose();
+    _pixKeyController.dispose();
     super.dispose();
   }
 }

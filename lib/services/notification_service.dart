@@ -358,7 +358,13 @@ class NotificationService {
     });
 
     // 7. Handler quando app está em foreground
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+    debugPrint('🔔 [NotificationService] Registrando listener onMessage...');
+    FirebaseMessaging.onMessage.listen((message) {
+      debugPrint('🔔 [NotificationService] ===== MENSAGEM RECEBIDA =====');
+      debugPrint('🔔 [NotificationService] messageId: ${message.messageId}');
+      debugPrint('🔔 [NotificationService] data: ${message.data}');
+      _handleForegroundMessage(message);
+    });
 
     // 8. Handler quando usuário toca na notificação (app em background/fechado)
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);

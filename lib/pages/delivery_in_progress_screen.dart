@@ -6,7 +6,7 @@ import '../services/delivery_service.dart';
 class DeliveryInProgressScreen extends StatefulWidget {
   final Map<String, dynamic> delivery;
 
-  const DeliveryInProgressScreen({Key? key, required this.delivery}) : super(key: key);
+  const DeliveryInProgressScreen({super.key, required this.delivery});
 
   @override
   State<DeliveryInProgressScreen> createState() => _DeliveryInProgressScreenState();

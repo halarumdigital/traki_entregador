@@ -6,7 +6,7 @@ import '../functions/functions.dart';
 import '../services/local_storage_service.dart';
 
 class DriverProfileScreen extends StatefulWidget {
-  const DriverProfileScreen({Key? key}) : super(key: key);
+  const DriverProfileScreen({super.key});
 
   @override
   State<DriverProfileScreen> createState() => _DriverProfileScreenState();

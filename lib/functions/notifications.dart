@@ -49,12 +49,14 @@ var iosInit = const DarwinInitializationSettings(
 var initSetting = InitializationSettings(android: androiInit, iOS: iosInit);
 
 Future<void> initMessaging() async {
+  debugPrint('🔔 [notifications.dart] initMessaging() chamado');
   await fltNotification.initialize(initSetting);
 
   await FirebaseMessaging.instance.requestPermission();
 
   FirebaseMessaging.instance.getInitialMessage().then((message) {
     if (message?.data != null) {
+      debugPrint('🔔 [notifications.dart] Mensagem inicial: ${message?.data}');
       if (message?.data['push_type'] == 'general') {
         latestNotification = message?.data['message'];
         isGeneral = true;
@@ -64,6 +66,8 @@ Future<void> initMessaging() async {
   });
 
   FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+    debugPrint('🔔 [notifications.dart] onMessage recebido: ${message.data}');
+    debugPrint('🔔 [notifications.dart] notification payload: ${message.notification}');
     RemoteNotification? notification = message.notification;
     if (notification != null) {
       if (message.data['push_type'].toString() == 'general') {

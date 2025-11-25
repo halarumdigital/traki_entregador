@@ -9,9 +9,9 @@ class IntermunicipalDeliveryRequestDialog extends StatefulWidget {
   final Map<String, dynamic> data;
 
   const IntermunicipalDeliveryRequestDialog({
-    Key? key,
+    super.key,
     required this.data,
-  }) : super(key: key);
+  });
 
   @override
   State<IntermunicipalDeliveryRequestDialog> createState() =>

@@ -6,7 +6,7 @@ import '../../functions/functions.dart';
 import '../../styles/styles.dart';
 import '../../translation/translation.dart';
 import '../../widgets/widgets.dart';
-import '../noInternet/noInternet.dart';
+import '../noInternet/nointernet.dart';
 import 'makecomplaintdetails.dart';
 
 class MakeComplaint extends StatefulWidget {

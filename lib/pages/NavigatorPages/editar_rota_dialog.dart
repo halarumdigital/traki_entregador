@@ -249,7 +249,7 @@ class _EditarRotaDialogState extends State<EditarRotaDialog> {
                             _ativo = value;
                           });
                         },
-                        activeColor: theme,
+                        activeThumbColor: theme,
                       ),
                     ],
                   ),

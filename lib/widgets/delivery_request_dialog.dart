@@ -9,7 +9,7 @@ import '../pages/active_delivery_screen.dart';
 class DeliveryRequestDialog extends StatefulWidget {
   final Map<String, dynamic> data;
 
-  const DeliveryRequestDialog({Key? key, required this.data}) : super(key: key);
+  const DeliveryRequestDialog({super.key, required this.data});
 
   @override
   State<DeliveryRequestDialog> createState() => _DeliveryRequestDialogState();
@@ -84,7 +84,7 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
 
     _requestId = _resolveRequestId(widget.data);
     final cancelledBeforeInit = _requestId != null &&
-        NotificationService.consumePendingCancellation(_requestId!);
+        NotificationService.consumePendingCancellation(_requestId);
 
     if (cancelledBeforeInit) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -473,15 +473,13 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
           Navigator.pop(context);
 
           final deliveryPayload = updatedDelivery ?? result;
-          if (deliveryPayload != null) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ActiveDeliveryScreen(delivery: deliveryPayload),
-              ),
-            );
-          }
-
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ActiveDeliveryScreen(delivery: deliveryPayload),
+            ),
+          );
+        
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Row(

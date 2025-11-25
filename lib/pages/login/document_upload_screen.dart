@@ -26,9 +26,9 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
   String _loadingMessage = '';
 
   List<dynamic> _documentTypes = [];
-  Map<String, File?> _selectedFiles = {}; // documentTypeId -> File
-  Map<String, dynamic> _documentStatus = {}; // documentTypeId -> status data
-  Map<String, dynamic> _uploadedDocuments = {}; // Documentos já enviados do servidor
+  final Map<String, File?> _selectedFiles = {}; // documentTypeId -> File
+  final Map<String, dynamic> _documentStatus = {}; // documentTypeId -> status data
+  final Map<String, dynamic> _uploadedDocuments = {}; // Documentos já enviados do servidor
 
   @override
   void initState() {

@@ -4,7 +4,7 @@ import '../functions/functions.dart';
 import '../styles/styles.dart';
 
 class OnlineOfflineToggle extends StatefulWidget {
-  const OnlineOfflineToggle({Key? key}) : super(key: key);
+  const OnlineOfflineToggle({super.key});
 
   @override
   State<OnlineOfflineToggle> createState() => _OnlineOfflineToggleState();
@@ -151,7 +151,7 @@ class _OnlineOfflineToggleState extends State<OnlineOfflineToggle> {
             Switch(
               value: isOnline,
               onChanged: _toggleStatus,
-              activeColor: Colors.white,
+              activeThumbColor: Colors.white,
               activeTrackColor: Color(0xFF81C784),
               inactiveThumbColor: Colors.white,
               inactiveTrackColor: Color(0xFFBDBDBD),

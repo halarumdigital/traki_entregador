@@ -1531,6 +1531,8 @@ driverRegisterWithoutDocuments(Map<String, dynamic> data) async {
   try {
     debugPrint('📝 ===== INICIANDO REGISTRO DE MOTORISTA (SEM DOCUMENTOS) =====');
     debugPrint('📤 Dados: $data');
+    debugPrint('🔑 PIX Key: ${data['pixKey']}');
+    debugPrint('🔑 PIX Key Type: ${data['pixKeyType']}');
     debugPrint('🌐 URL: ${url}api/v1/driver/register');
 
     // Get FCM token
@@ -1558,6 +1560,8 @@ driverRegisterWithoutDocuments(Map<String, dynamic> data) async {
         'carNumber': data['carNumber'] ?? '',
         'carColor': data['carColor'] ?? '',
         'carYear': data['carYear'] ?? '',
+        'pixKey': data['pixKey'] ?? '',
+        'pixKeyType': data['pixKeyType'] ?? '',
         'deviceToken': fcmToken,
         'loginBy': (platform == TargetPlatform.android) ? 'android' : 'ios',
       }),
@@ -5411,9 +5415,7 @@ waitingAfterStart() async {
   //   waitingTime = waitingTimes.child('total_waiting_time').value;
   //   // ignore: prefer_conditional_assignment
   // } else
-  if (waitingTime == null) {
-    waitingTime = 0;
-  }
+  waitingTime ??= 0;
   // if (aWaitingTimes.child('waiting_time_after_start').value != null) {
   //   waitingAfterTime = aWaitingTimes.child('waiting_time_after_start').value;
   // } else {
@@ -5739,8 +5741,8 @@ geolocs.LocationSettings locationSettings = (platform == TargetPlatform.android)
         foregroundNotificationConfig:
             const geolocs.ForegroundNotificationConfig(
           notificationText:
-              "Product Name will continue to receive your location in background",
-          notificationTitle: "Location background service running",
+              "A Fretus continua funcionando em segundo plano",
+          notificationTitle: "Fretus Driver",
           enableWakeLock: true,
         ))
     : geolocs.AppleSettings(
@@ -6355,4 +6357,144 @@ additionalCharge(reason, amount) async {
     }
   }
   return result;
+}
+
+// ============ CARTEIRA / SAQUE ============
+
+/// Busca o saldo disponível e informações de saque do motorista
+Future<Map<String, dynamic>?> getDriverBalance() async {
+  try {
+    debugPrint('💰 Buscando saldo do motorista...');
+
+    final token = await LocalStorageService.getAccessToken();
+    if (token == null) {
+      debugPrint('❌ Token não encontrado');
+      return null;
+    }
+
+    var response = await http.get(
+      Uri.parse('${url}api/v1/driver/balance'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    debugPrint('📥 Status Code: ${response.statusCode}');
+    debugPrint('📥 Response: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      debugPrint('✅ Saldo carregado com sucesso');
+      return data;
+    } else if (response.statusCode == 401) {
+      debugPrint('❌ Token expirado');
+      return null;
+    } else {
+      debugPrint('❌ Erro ao buscar saldo: ${response.statusCode}');
+      return null;
+    }
+  } catch (e) {
+    debugPrint('❌ Erro ao buscar saldo: $e');
+    return null;
+  }
+}
+
+/// Busca o histórico de saques do motorista
+Future<List<dynamic>> getWithdrawHistory() async {
+  try {
+    debugPrint('📜 Buscando histórico de saques...');
+
+    final token = await LocalStorageService.getAccessToken();
+    if (token == null) {
+      debugPrint('❌ Token não encontrado');
+      return [];
+    }
+
+    var response = await http.get(
+      Uri.parse('${url}api/v1/driver/withdraw-history'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    debugPrint('📥 Status Code: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      debugPrint('✅ Histórico carregado com sucesso');
+      return data['data'] ?? [];
+    } else if (response.statusCode == 401) {
+      debugPrint('❌ Token expirado');
+      return [];
+    } else {
+      debugPrint('❌ Erro ao buscar histórico: ${response.statusCode}');
+      return [];
+    }
+  } catch (e) {
+    debugPrint('❌ Erro ao buscar histórico: $e');
+    return [];
+  }
+}
+
+/// Realiza uma solicitação de saque (novo endpoint)
+Future<Map<String, dynamic>> requestDriverWithdraw() async {
+  try {
+    debugPrint('💸 Solicitando saque...');
+
+    final token = await LocalStorageService.getAccessToken();
+    if (token == null) {
+      debugPrint('❌ Token não encontrado');
+      return {
+        'success': false,
+        'message': 'Sessão expirada. Faça login novamente.',
+      };
+    }
+
+    var response = await http.post(
+      Uri.parse('${url}api/v1/driver/withdraw'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    debugPrint('📥 Status Code: ${response.statusCode}');
+    debugPrint('📥 Response: ${response.body}');
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      debugPrint('✅ Saque realizado com sucesso');
+      return {
+        'success': true,
+        'data': data,
+      };
+    } else if (response.statusCode == 401) {
+      debugPrint('❌ Token expirado');
+      return {
+        'success': false,
+        'message': 'Sessão expirada. Faça login novamente.',
+      };
+    } else if (response.statusCode == 400) {
+      debugPrint('❌ Erro de validação: ${data['message']}');
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Não foi possível realizar o saque.',
+      };
+    } else {
+      debugPrint('❌ Erro ao realizar saque: ${response.statusCode}');
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Erro ao realizar saque.',
+      };
+    }
+  } catch (e) {
+    debugPrint('❌ Erro ao realizar saque: $e');
+    return {
+      'success': false,
+      'message': 'Erro de conexão. Tente novamente.',
+    };
+  }
 }

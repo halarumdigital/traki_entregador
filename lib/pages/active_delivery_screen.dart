@@ -9,7 +9,7 @@ import '../models/delivery.dart';
 class ActiveDeliveryScreen extends StatefulWidget {
   final Map<String, dynamic> delivery;
 
-  const ActiveDeliveryScreen({Key? key, required this.delivery}) : super(key: key);
+  const ActiveDeliveryScreen({super.key, required this.delivery});
 
   @override
   State<ActiveDeliveryScreen> createState() => _ActiveDeliveryScreenState();
@@ -26,7 +26,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
   void initState() {
     super.initState();
     _delivery = widget.delivery;
-    debugPrint('📦 Tela de entrega ativa carregada: ${_delivery}');
+    debugPrint('📦 Tela de entrega ativa carregada: $_delivery');
   }
 
   String _formatCurrency(dynamic value) {

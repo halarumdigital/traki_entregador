@@ -501,7 +501,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				FLUTTER_TARGET = lib/main.dart;
 				INFOPLIST_FILE = Runner/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Super Bidding Driver";
+				INFOPLIST_KEY_CFBundleDisplayName = "Fretus Entregador";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -697,7 +697,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				FLUTTER_TARGET = lib/main.dart;
 				INFOPLIST_FILE = Runner/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Super Bidding Driver";
+				INFOPLIST_KEY_CFBundleDisplayName = "Fretus Entregador";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -733,7 +733,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				FLUTTER_TARGET = lib/main.dart;
 				INFOPLIST_FILE = Runner/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Super Bidding Driver";
+				INFOPLIST_KEY_CFBundleDisplayName = "Fretus Entregador";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				LD_RUNPATH_SEARCH_PATHS = (

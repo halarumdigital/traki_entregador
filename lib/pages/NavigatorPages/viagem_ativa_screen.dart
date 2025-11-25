@@ -1365,7 +1365,7 @@ class _ViagemAtivaScreenState extends State<ViagemAtivaScreen> {
                 SizedBox(height: media.width * 0.02),
                 ...entrega.paradas!.asMap().entries.map((entry) {
                   return _buildParadaCard(entrega, entry.value, media);
-                }).toList(),
+                }),
               ],
             ),
           ),

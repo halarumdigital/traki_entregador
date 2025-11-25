@@ -12,9 +12,9 @@ class ApprovalStatusScreen extends StatefulWidget {
   final String driverId;
 
   const ApprovalStatusScreen({
-    Key? key,
+    super.key,
     required this.driverId,
-  }) : super(key: key);
+  });
 
   @override
   State<ApprovalStatusScreen> createState() => _ApprovalStatusScreenState();
@@ -341,7 +341,7 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
             final step = entry.value;
             final isLast = index == statusData!.timeline.length - 1;
             return _buildTimelineItem(step, isLast);
-          }).toList(),
+          }),
         ],
       ),
     );

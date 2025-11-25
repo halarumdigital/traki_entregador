@@ -32,8 +32,8 @@ class _RegisterStep3DocumentsState extends State<RegisterStep3Documents> {
   String _loadingMessage = '';
 
   List<dynamic> _documentTypes = [];
-  Map<String, File?> _selectedFiles = {}; // documentTypeId -> File
-  Map<String, dynamic> _documentStatus = {}; // documentTypeId -> status data
+  final Map<String, File?> _selectedFiles = {}; // documentTypeId -> File
+  final Map<String, dynamic> _documentStatus = {}; // documentTypeId -> status data
 
   @override
   void initState() {

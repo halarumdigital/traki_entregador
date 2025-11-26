@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/local_storage_service.dart';
 import '../functions/functions.dart';
-import '../styles/styles.dart';
 
 class OnlineOfflineToggle extends StatefulWidget {
   const OnlineOfflineToggle({super.key});

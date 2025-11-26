@@ -7,7 +7,6 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_driver/functions/notifications.dart';
 import 'package:flutter_driver/models/approval_status_model.dart';
 import 'package:flutter_driver/services/local_storage_service.dart';
 import 'package:flutter_driver/pages/onTripPage/choosegoods.dart';

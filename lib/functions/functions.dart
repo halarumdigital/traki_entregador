@@ -5740,8 +5740,8 @@ geolocs.LocationSettings locationSettings = (platform == TargetPlatform.android)
         foregroundNotificationConfig:
             const geolocs.ForegroundNotificationConfig(
           notificationText:
-              "A Fretus continua funcionando em segundo plano",
-          notificationTitle: "Fretus Driver",
+              "A Traki continua funcionando em segundo plano para aceitar novos pedidos",
+          notificationTitle: "Traki Entregador",
           enableWakeLock: true,
         ))
     : geolocs.AppleSettings(

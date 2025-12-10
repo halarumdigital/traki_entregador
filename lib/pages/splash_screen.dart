@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/registration_status_service.dart';
 import '../services/location_permission_service.dart';
+import '../services/driver_block_service.dart';
 import '../styles/styles.dart';
 import 'login/login.dart';
 import 'login/approval_status_screen.dart';
@@ -28,6 +29,21 @@ class _SplashScreenState extends State<SplashScreen> {
 
     // 1. Primeiro, verificar e solicitar permissões de localização
     await LocationPermissionService.checkAndRequestLocationPermission(context);
+
+    if (!mounted) return;
+
+    // 2. Verificar se o entregador está bloqueado (antes de continuar)
+    final blockStatus = await DriverBlockService.checkBlockStatus();
+    if (blockStatus != null && blockStatus.isBlocked) {
+      debugPrint('🚫 [SplashScreen] Entregador bloqueado detectado');
+      if (mounted) {
+        await DriverBlockService.showBlockedDialogAndLogout(
+          context,
+          customMessage: blockStatus.message,
+        );
+      }
+      return;
+    }
 
     if (!mounted) return;
 

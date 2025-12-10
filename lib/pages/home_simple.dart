@@ -9,6 +9,7 @@ import '../styles/styles.dart';
 import '../functions/functions.dart';
 import '../services/local_storage_service.dart';
 import '../services/delivery_service.dart';
+import '../services/driver_block_service.dart';
 import '../services/location_permission_service.dart';
 import 'driver_profile_screen.dart';
 import 'active_delivery_screen.dart';
@@ -38,6 +39,7 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
   Map<String, dynamic>? _driverProfile;
   bool _isLoadingProfile = false;
   Timer? _locationTimer;
+  Timer? _blockCheckTimer; // Timer para verificar bloqueio periodicamente
   Map<String, dynamic>? _currentDelivery;
   bool _isLoadingDelivery = false;
   Map<String, dynamic>? _commissionStats;
@@ -55,12 +57,14 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
     _loadCommissionStats();
     _loadAvailableDeliveries();
     _startLocationUpdates();
+    _startBlockStatusCheck();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _locationTimer?.cancel();
+    _blockCheckTimer?.cancel();
     super.dispose();
   }
 
@@ -109,6 +113,31 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
         debugPrint('❌ Erro ao obter/enviar localização inicial: $e');
       }
     });
+  }
+
+  /// Inicia verificação periódica de status de bloqueio
+  void _startBlockStatusCheck() {
+    // Verificar imediatamente ao iniciar
+    _checkBlockStatus();
+
+    // Verificar a cada 5 minutos (300 segundos)
+    _blockCheckTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+      _checkBlockStatus();
+    });
+  }
+
+  /// Verifica se o entregador está bloqueado
+  Future<void> _checkBlockStatus() async {
+    if (!mounted) return;
+
+    debugPrint('🔍 [HomeSimple] Verificando status de bloqueio...');
+
+    final isBlocked = await DriverBlockService.checkAndHandleBlock(context);
+
+    if (isBlocked) {
+      debugPrint('🚫 [HomeSimple] Entregador bloqueado - logout realizado');
+      // O DriverBlockService já faz o logout e mostra o diálogo
+    }
   }
 
   Future<void> _loadDriverProfile() async {

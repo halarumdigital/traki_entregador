@@ -22,6 +22,7 @@ import 'dart:math' as math;
 import '../loadingPage/loading.dart';
 import 'agreement.dart';
 import '../../services/local_storage_service.dart';
+import '../../services/driver_block_service.dart';
 import 'approval_status_screen.dart';
 
 class Login extends StatefulWidget {
@@ -287,6 +288,16 @@ class _LoginState extends State<Login> with TickerProviderStateMixin {
       });
     } else {
       debugPrint('❌ verify tem outro valor: $verify');
+
+      // 🚫 Verificar se é bloqueio (403 com blocked: true)
+      if (verify is Map && verify['blocked'] == true) {
+        debugPrint('🚫 Conta bloqueada detectada!');
+        await DriverBlockService.showBlockedDialogAndLogout(
+          context,
+          customMessage: verify['message'],
+        );
+        return;
+      }
 
       // 🔍 Verificar se é erro 403 (aguardando aprovação)
       if (verify.toString().contains('aguardando aprovação') ||

@@ -62,7 +62,7 @@ String packageName = '';
 String signKey = '';
 
 //base url
-String url = 'http://192.168.3.3:5010/'; //add '/' at the end of the url as 'https://url.com/'
+String url = 'http://192.168.1.2:5010/'; //add '/' at the end of the url as 'https://url.com/'
 String mapkey =
     (platform == TargetPlatform.android) ? 'AIzaSyANsPBDNfBx4_mjWvBaYxNVHZh2PPEExsM' : 'ios map key';
 
@@ -1490,9 +1490,17 @@ driverLogin(number, login, password, isOtp) async {
       result = jsonVal['message'] ?? 'Telefone ou senha incorretos';
       debugPrint('Erro: $result');
     } else if (response.statusCode == 403) {
-      debugPrint('❌ 403 Forbidden');
+      debugPrint('❌ 403 Forbidden - Conta bloqueada');
       var jsonVal = jsonDecode(response.body);
-      result = jsonVal['message'] ?? 'Conta desativada';
+      // Retornar objeto especial para indicar bloqueio
+      if (jsonVal['blocked'] == true) {
+        result = {
+          'blocked': true,
+          'message': jsonVal['message'] ?? 'Seu cadastro foi desativado por violações nos termos de uso da Traki, para saber mais entre em contato com o suporte.',
+        };
+      } else {
+        result = jsonVal['message'] ?? 'Conta desativada';
+      }
       debugPrint('Erro: $result');
     } else if (response.statusCode == 422) {
       debugPrint('❌ 422 Validation Error');

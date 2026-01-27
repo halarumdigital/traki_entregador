@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_driver/pages/NavigatorPages/outstation.dart';
 import 'package:flutter_driver/pages/NavigatorPages/promotions.dart';
-import 'package:flutter_driver/pages/NavigatorPages/settings.dart';
 import 'package:flutter_driver/pages/NavigatorPages/support.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../functions/functions.dart';
@@ -19,7 +18,6 @@ import '../NavigatorPages/faq.dart';
 import '../NavigatorPages/my_deliveries.dart';
 import '../NavigatorPages/makecomplaint.dart';
 import '../NavigatorPages/managevehicles.dart';
-import '../NavigatorPages/notification.dart';
 import '../NavigatorPages/referral.dart';
 import '../NavigatorPages/sos.dart';
 import '../NavigatorPages/walletpage.dart';
@@ -391,97 +389,6 @@ class _NavDrawerState extends State<NavDrawer> {
 
                             // Fim da seção de rotas
 
-                            (userDetails['role'] != 'owner')
-                                ? ValueListenableBuilder(
-                                    valueListenable:
-                                        valueNotifierNotification.value,
-                                    builder: (context, value, child) {
-                                      return InkWell(
-                                        onTap: () {
-                                          Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      const NotificationPage()));
-                                          setState(() {
-                                            userDetails['notifications_count'] =
-                                                0;
-                                          });
-                                        },
-                                        child: Container(
-                                          width: media.width * 0.7,
-                                          padding: EdgeInsets.only(
-                                              top: media.width * 0.07),
-                                          child: Row(
-                                            children: [
-                                              Icon(
-                                                Icons.notifications_none,
-                                                size: media.width * 0.04,
-                                                color: textColor,
-                                              ),
-                                              SizedBox(
-                                                width: media.width * 0.025,
-                                              ),
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
-                                                children: [
-                                                  SizedBox(
-                                                    width: (userDetails[
-                                                                'notifications_count'] ==
-                                                            0)
-                                                        ? media.width * 0.55
-                                                        : media.width * 0.495,
-                                                    child: MyText(
-                                                        text: languages[choosenLanguage]
-                                                                [
-                                                                'text_notification']
-                                                            .toString(),
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                        size: media.width *
-                                                            sixteen,
-                                                        color: textColor),
-                                                  ),
-                                                  (userDetails[
-                                                              'notifications_count'] ==
-                                                          0)
-                                                      ? Container()
-                                                      : Container(
-                                                          height: 25,
-                                                          width: 25,
-                                                          alignment:
-                                                              Alignment.center,
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            shape:
-                                                                BoxShape.circle,
-                                                            color: buttonColor,
-                                                          ),
-                                                          child: Text(
-                                                            userDetails[
-                                                                    'notifications_count']
-                                                                .toString(),
-                                                            style: GoogleFonts.notoSans(
-                                                                fontSize: media
-                                                                        .width *
-                                                                    twelve,
-                                                                color: (isDarkTheme)
-                                                                    ? Colors
-                                                                        .black
-                                                                    : buttonText),
-                                                          ),
-                                                        ),
-                                                ],
-                                              )
-                                            ],
-                                          ),
-                                        ),
-                                      );
-                                    })
-                                : Container(),
-
                             if (userDetails['show_outstation_ride_feature'] ==
                                 "1")
                               SizedBox(
@@ -656,26 +563,6 @@ class _NavDrawerState extends State<NavDrawer> {
                                           builder: (context) =>
                                               const MakeComplaint()));
                                 },
-                              ),
-                            ),
-
-                            //settings
-                            SizedBox(
-                              width: media.width * 0.7,
-                              child: NavMenu(
-                                onTap: () async {
-                                  var nav = await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) =>
-                                              const SettingsPage()));
-                                  if (nav) {
-                                    setState(() {});
-                                  }
-                                },
-                                text: languages[choosenLanguage]
-                                    ['text_settings'],
-                                icon: Icons.settings,
                               ),
                             ),
 

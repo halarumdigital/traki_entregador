@@ -67,8 +67,7 @@
       "Bash(xargs:*)",
       "mcp__figma__download_figma_images",
       "Bash(file:*)",
-      "WebFetch(domain:www.figma.com)",
-      "Bash(dart analyze:*)"
+      "WebFetch(domain:www.figma.com)"
     ],
     "deny": [],
     "ask": []

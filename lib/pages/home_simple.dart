@@ -12,7 +12,6 @@ import '../services/local_storage_service.dart';
 import '../services/delivery_service.dart';
 import '../services/driver_block_service.dart';
 import '../services/location_permission_service.dart';
-import 'driver_profile_screen.dart';
 import 'profile_details_screen.dart';
 import 'active_delivery_screen.dart';
 import 'delivery_with_stops_screen.dart';
@@ -20,7 +19,6 @@ import '../models/delivery.dart';
 import 'NavigatorPages/promotions.dart';
 import 'NavigatorPages/faq.dart';
 import 'NavigatorPages/my_deliveries.dart';
-import 'NavigatorPages/notification.dart';
 import 'NavigatorPages/referral.dart';
 import 'NavigatorPages/referral_companies.dart';
 import 'NavigatorPages/support_tickets.dart';
@@ -28,7 +26,9 @@ import 'NavigatorPages/entregas_ativas.dart';
 import 'NavigatorPages/minhas_rotas.dart';
 import 'NavigatorPages/minhas_viagens.dart';
 import 'NavigatorPages/carteira_page.dart';
+import 'NavigatorPages/notification.dart';
 import 'auth/login_screen_new.dart';
+import '../services/driver_notification_service.dart';
 
 class HomeSimple extends StatefulWidget {
   const HomeSimple({super.key});
@@ -51,6 +51,8 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
   List<Map<String, dynamic>> _activeDeliveries = []; // NOVO: lista de entregas ativas
   Map<String, dynamic>? _balanceData; // NOVO: dados da carteira
   bool _isLoadingBalance = false; // NOVO: loading da carteira
+  int _notificationCount = 0; // Contador de notificações novas
+  DateTime? _lastNotificationCheck; // Última vez que viu notificações
 
   @override
   void initState() {
@@ -61,6 +63,7 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
     _loadCommissionStats();
     _loadAvailableDeliveries();
     _loadWalletBalance(); // NOVO: carregar saldo da carteira
+    _loadNotificationCount(); // Carregar contador de notificações
     _startLocationUpdates();
     _startBlockStatusCheck();
   }
@@ -309,6 +312,48 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _loadNotificationCount() async {
+    try {
+      // Carregar última vez que viu notificações
+      final prefs = await SharedPreferences.getInstance();
+      final lastCheckMillis = prefs.getInt('lastNotificationCheck');
+      if (lastCheckMillis != null) {
+        _lastNotificationCheck = DateTime.fromMillisecondsSinceEpoch(lastCheckMillis);
+      }
+
+      final response = await DriverNotificationService.getNotifications();
+      if (mounted && response != null) {
+        // Contar apenas notificações mais recentes que a última visualização
+        int newCount = 0;
+        if (_lastNotificationCheck != null) {
+          for (var notification in response.notifications) {
+            if (notification.createdAt.isAfter(_lastNotificationCheck!)) {
+              newCount++;
+            }
+          }
+        } else {
+          // Se nunca viu, todas são novas
+          newCount = response.count;
+        }
+
+        setState(() {
+          _notificationCount = newCount;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao carregar contagem de notificações: $e');
+    }
+  }
+
+  Future<void> _markNotificationsAsRead() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('lastNotificationCheck', DateTime.now().millisecondsSinceEpoch);
+    _lastNotificationCheck = DateTime.now();
+    setState(() {
+      _notificationCount = 0;
+    });
+  }
+
   Future<void> _loadCommissionStats() async {
     setState(() {
       _isLoadingStats = true;
@@ -400,6 +445,8 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
       _loadCurrentDelivery(),
       _loadCommissionStats(),
       _loadAvailableDeliveries(),
+      _loadNotificationCount(),
+      _loadWalletBalance(),
     ]);
 
     debugPrint('✅ Dados atualizados com sucesso!');
@@ -495,39 +542,35 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       // Ícone de notificação com badge
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 28),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const NotificationPage(),
+                      GestureDetector(
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const NotificationPage()),
+                          );
+                          // Marcar como lidas e recarregar contador ao voltar
+                          await _markNotificationsAsRead();
+                        },
+                        child: Stack(
+                          children: [
+                            const Icon(Icons.notifications_outlined, color: Colors.white, size: 28),
+                            if (_notificationCount > 0)
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
-                              );
-                            },
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                          // Badge laranja
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            child: Container(
-                              width: 10,
-                              height: 10,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFF9800),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: AppColors.primary, width: 1.5),
                               ),
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
                       // Toggle Ativo/Inativo (label já está dentro do widget)
                       const OnlineOfflineToggle(),
                     ],
@@ -566,132 +609,88 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                         ),
                       )
                     : _driverProfile != null
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Foto do perfil
-                              Center(
-                                child: Container(
-                                  width: 80,
-                                  height: 80,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 5),
-                                      ),
-                                    ],
-                                  ),
-                                  child: _driverProfile!['personalData']
-                                                  ?['profilePicture'] !=
-                                              null &&
-                                          _driverProfile!['personalData']
-                                                  ['profilePicture']
-                                              .toString()
-                                              .isNotEmpty
-                                      ? ClipOval(
-                                          child: Image.network(
-                                            '$url${_driverProfile!['personalData']['profilePicture']}',
-                                            fit: BoxFit.cover,
-                                            errorBuilder:
-                                                (context, error, stackTrace) {
-                                              return Icon(
-                                                Icons.person,
-                                                size: 50,
-                                                color: Colors.grey[600],
-                                              );
-                                            },
+                        ? Builder(
+                            builder: (context) {
+                              // Buscar foto do perfil - verificar várias estruturas possíveis
+                              String? profilePicture = _driverProfile!['personalData']?['profilePicture']?.toString();
+                              if (profilePicture == null || profilePicture.isEmpty) {
+                                profilePicture = _driverProfile!['profilePicture']?.toString();
+                              }
+                              if (profilePicture == null || profilePicture.isEmpty) {
+                                profilePicture = userDetails['profilePicture']?.toString();
+                              }
+
+                              // Buscar nome - verificar várias estruturas possíveis
+                              String driverName = _driverProfile!['personalData']?['fullName']?.toString() ?? '';
+                              if (driverName.isEmpty) {
+                                driverName = _driverProfile!['name']?.toString() ?? '';
+                              }
+                              if (driverName.isEmpty) {
+                                driverName = userDetails['name']?.toString() ?? '';
+                              }
+                              if (driverName.isEmpty) {
+                                driverName = 'Motorista';
+                              }
+
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Foto do perfil
+                                  Center(
+                                    child: Container(
+                                      width: 80,
+                                      height: 80,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.white,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.2),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 5),
                                           ),
-                                        )
-                                      : Icon(
-                                          Icons.person,
-                                          size: 50,
-                                          color: Colors.grey[600],
-                                        ),
-                                ),
-                              ),
-                              const SizedBox(height: 15),
-                              // Nome
-                              Center(
-                                child: Text(
-                                  _driverProfile!['personalData']?['fullName'] ??
-                                      'Motorista',
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              // Email
-                              Center(
-                                child: Text(
-                                  _driverProfile!['personalData']?['email'] ?? '',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.white.withOpacity(0.9),
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              // WhatsApp
-                              if (_driverProfile!['personalData']?['whatsapp'] !=
-                                  null)
-                                Center(
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.phone,
-                                        size: 16,
-                                        color: Colors.white.withOpacity(0.9),
+                                        ],
                                       ),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        _driverProfile!['personalData']
-                                                ['whatsapp'] ??
-                                            '',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.white.withOpacity(0.9),
-                                        ),
-                                      ),
-                                    ],
+                                      child: profilePicture != null && profilePicture.isNotEmpty
+                                          ? ClipOval(
+                                              child: Image.network(
+                                                '$url$profilePicture',
+                                                fit: BoxFit.cover,
+                                                width: 80,
+                                                height: 80,
+                                                errorBuilder:
+                                                    (context, error, stackTrace) {
+                                                  return Icon(
+                                                    Icons.person,
+                                                    size: 50,
+                                                    color: Colors.grey[600],
+                                                  );
+                                                },
+                                              ),
+                                            )
+                                          : Icon(
+                                              Icons.person,
+                                              size: 50,
+                                              color: Colors.grey[600],
+                                            ),
+                                    ),
                                   ),
-                                ),
-                              const SizedBox(height: 5),
-                              // Cidade
-                              if (_driverProfile!['personalData']?['city'] !=
-                                  null)
-                                Center(
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.location_on,
-                                        size: 16,
-                                        color: Colors.white.withOpacity(0.9),
+                                  const SizedBox(height: 15),
+                                  // Nome
+                                  Center(
+                                    child: Text(
+                                      driverName,
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
                                       ),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        _driverProfile!['personalData']
-                                                ['city'] ??
-                                            '',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.white.withOpacity(0.9),
-                                        ),
-                                      ),
-                                    ],
+                                      textAlign: TextAlign.center,
+                                    ),
                                   ),
-                                ),
-                            ],
+                                ],
+                              );
+                            },
                           )
                         : const Column(
                             children: [
@@ -858,40 +857,6 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                       const SizedBox(height: 20),
                       // Itens do menu
                       ListTile(
-                        leading: const Icon(Icons.person, color: AppColors.primary),
-                        title: const Text(
-                          'Meu Perfil',
-                          style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
-                        ),
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const DriverProfileScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                      const Divider(height: 1, color: Color(0xFFE0E0E0)),
-                      ListTile(
-                        leading: const Icon(Icons.account_balance_wallet, color: AppColors.primary),
-                        title: const Text(
-                          'Carteira',
-                          style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
-                        ),
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const CarteiraPage(),
-                            ),
-                          );
-                        },
-                      ),
-                      Divider(height: 1, color: borderLines),
-                      ListTile(
                         leading: const Icon(Icons.local_shipping_outlined, color: AppColors.primary),
                         title: const Text(
                           'Minhas Entregas',
@@ -969,23 +934,6 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                         },
                       ),
                       Divider(height: 1, color: borderLines),
-                      ListTile(
-                        leading: const Icon(Icons.notifications_outlined, color: AppColors.primary),
-                        title: const Text(
-                          'Notificações',
-                          style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
-                        ),
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const NotificationPage(),
-                            ),
-                          );
-                        },
-                      ),
-                      Divider(height: 1, color: borderLines),
                       ExpansionTile(
                         leading: const Icon(Icons.people_alt_outlined, color: AppColors.primary),
                         title: const Text(
@@ -1044,18 +992,6 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                               builder: (context) => const PromotionsPage(),
                             ),
                           );
-                        },
-                      ),
-                      Divider(height: 1, color: borderLines),
-                      ListTile(
-                        leading: const Icon(Icons.settings, color: AppColors.primary),
-                        title: const Text(
-                          'Configurações',
-                          style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
-                        ),
-                        onTap: () {
-                          Navigator.pop(context);
-                          // TODO: Navegar para tela de configurações
                         },
                       ),
                       Divider(height: 1, color: borderLines),
@@ -2488,7 +2424,6 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                   },
                 ),
               ),
-              _buildNavBarItem(Icons.notifications_outlined, 'Notificações', false),
               _buildNavBarItem(Icons.person_outline, 'Perfil', false),
             ],
           ),
@@ -2505,13 +2440,6 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
             context,
             MaterialPageRoute(
               builder: (context) => const CarteiraPage(),
-            ),
-          );
-        } else if (label == 'Notificações') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const NotificationPage(),
             ),
           );
         } else if (label == 'Perfil') {

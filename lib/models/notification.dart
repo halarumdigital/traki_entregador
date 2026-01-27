@@ -73,6 +73,11 @@ class DriverNotification {
 
   /// Verificar se é uma notificação específica do motorista
   bool get isDriverNotification => type == 'driver';
+
+  /// Formatar apenas o horário para exibição
+  String get formattedTime {
+    return '${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}';
+  }
 }
 
 /// Resposta completa do endpoint de notificações

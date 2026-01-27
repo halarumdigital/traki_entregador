@@ -23,12 +23,14 @@ class ReferralPage extends StatefulWidget {
 }
 
 class _ReferralPageState extends State<ReferralPage> {
+  // Cor roxa padrão para a tela de indicações
+  static const Color _primaryColor = Color(0xFF7B1FA2);
+
   bool _isLoading = true;
   String? _referralCode;
   int _totalReferrals = 0;
   int _activeReferrals = 0;
   double _totalEarned = 0.0;
-  double _totalPaid = 0.0;
   int _minimumDeliveries = 0;
   double _commissionAmount = 0.0;
   List<Map<String, dynamic>> _referrals = [];
@@ -84,7 +86,6 @@ class _ReferralPageState extends State<ReferralPage> {
             _totalReferrals = totals['totalReferrals'] ?? 0;
             _activeReferrals = totals['activeReferrals'] ?? 0;
             _totalEarned = double.tryParse(totals['totalEarned']?.toString() ?? '0') ?? 0.0;
-            _totalPaid = double.tryParse(totals['totalPaid']?.toString() ?? '0') ?? 0.0;
 
             // Referrals list
             if (data['referrals'] != null && data['referrals'] is List) {
@@ -118,7 +119,7 @@ class _ReferralPageState extends State<ReferralPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Código copiado para a área de transferência!'),
-          backgroundColor: Colors.green,
+          backgroundColor: _primaryColor,
           duration: const Duration(seconds: 2),
         ),
       );
@@ -215,167 +216,157 @@ Baixe o app e cadastre-se para começar a ganhar dinheiro fazendo entregas! 🚚
                                   // Card com código de indicação
                                   Container(
                                     width: media.width * 0.9,
-                                    padding: EdgeInsets.all(media.width * 0.05),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [buttonColor, buttonColor.withValues(alpha: 0.7)],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(16),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: buttonColor.withValues(alpha: 0.3),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 5),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Icon(
-                                          Icons.card_giftcard,
-                                          size: media.width * 0.15,
-                                          color: Colors.white,
-                                        ),
-                                        SizedBox(height: media.width * 0.04),
-                                        Text(
-                                          'Seu Código de Indicação',
-                                          style: GoogleFonts.notoSans(
-                                            fontSize: media.width * sixteen,
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        SizedBox(height: media.width * 0.03),
-                                        Container(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: media.width * 0.05,
-                                            vertical: media.width * 0.03,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withValues(alpha: 0.2),
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          child: Text(
-                                            _referralCode ?? '------',
-                                            style: GoogleFonts.notoSans(
-                                              fontSize: media.width * 0.08,
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              letterSpacing: 3,
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(height: media.width * 0.05),
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                          children: [
-                                            // Botão Copiar
-                                            Expanded(
-                                              child: InkWell(
-                                                onTap: _copyToClipboard,
-                                                child: Container(
-                                                  padding: EdgeInsets.symmetric(
-                                                    vertical: media.width * 0.03,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.white,
-                                                    borderRadius: BorderRadius.circular(10),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisAlignment: MainAxisAlignment.center,
-                                                    children: [
-                                                      Icon(Icons.copy, color: buttonColor, size: 20),
-                                                      SizedBox(width: media.width * 0.02),
-                                                      Text(
-                                                        'Copiar',
-                                                        style: GoogleFonts.notoSans(
-                                                          color: buttonColor,
-                                                          fontWeight: FontWeight.w600,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            SizedBox(width: media.width * 0.03),
-                                            // Botão Compartilhar
-                                            Expanded(
-                                              child: InkWell(
-                                                onTap: _shareReferralCode,
-                                                child: Container(
-                                                  padding: EdgeInsets.symmetric(
-                                                    vertical: media.width * 0.03,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.white,
-                                                    borderRadius: BorderRadius.circular(10),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisAlignment: MainAxisAlignment.center,
-                                                    children: [
-                                                      Icon(Icons.share, color: buttonColor, size: 20),
-                                                      SizedBox(width: media.width * 0.02),
-                                                      Text(
-                                                        'Compartilhar',
-                                                        style: GoogleFonts.notoSans(
-                                                          color: buttonColor,
-                                                          fontWeight: FontWeight.w600,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  SizedBox(height: media.width * 0.05),
-
-                                  // Card com estatísticas
-                                  Container(
-                                    width: media.width * 0.9,
-                                    padding: EdgeInsets.all(media.width * 0.05),
+                                    padding: EdgeInsets.all(media.width * 0.04),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(16),
                                       border: Border.all(color: borderLines, width: 1.2),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(alpha: 0.05),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 5),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        // Ícone de presente
+                                        Container(
+                                          width: media.width * 0.12,
+                                          height: media.width * 0.12,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF3E5F5),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Icon(
+                                            Icons.card_giftcard,
+                                            size: media.width * 0.07,
+                                            color: _primaryColor,
+                                          ),
+                                        ),
+                                        SizedBox(width: media.width * 0.03),
+                                        // Texto do código
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Seu código de indicação',
+                                                style: GoogleFonts.notoSans(
+                                                  fontSize: media.width * twelve,
+                                                  color: textColor.withValues(alpha: 0.6),
+                                                ),
+                                              ),
+                                              SizedBox(height: media.width * 0.01),
+                                              Text(
+                                                _referralCode ?? '------',
+                                                style: GoogleFonts.notoSans(
+                                                  fontSize: media.width * 0.05,
+                                                  color: textColor,
+                                                  fontWeight: FontWeight.bold,
+                                                  letterSpacing: 1,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        // Botões de ação
+                                        InkWell(
+                                          onTap: _copyToClipboard,
+                                          child: Container(
+                                            padding: EdgeInsets.all(media.width * 0.025),
+                                            child: Icon(
+                                              Icons.copy_outlined,
+                                              color: textColor.withValues(alpha: 0.5),
+                                              size: media.width * 0.055,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(width: media.width * 0.02),
+                                        InkWell(
+                                          onTap: _shareReferralCode,
+                                          child: Container(
+                                            padding: EdgeInsets.all(media.width * 0.025),
+                                            child: Icon(
+                                              Icons.share_outlined,
+                                              color: textColor.withValues(alpha: 0.5),
+                                              size: media.width * 0.055,
+                                            ),
+                                          ),
                                         ),
                                       ],
                                     ),
-                                    child: Column(
+                                  ),
+                                  SizedBox(height: media.width * 0.04),
+
+                                  // Linha de indicações
+                                  Container(
+                                    width: media.width * 0.9,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: media.width * 0.04,
+                                      vertical: media.width * 0.03,
+                                    ),
+                                    child: Row(
                                       children: [
                                         Icon(
-                                          Icons.people,
-                                          size: media.width * 0.12,
-                                          color: buttonColor,
+                                          Icons.people_outline,
+                                          size: media.width * 0.06,
+                                          color: _primaryColor,
                                         ),
-                                        SizedBox(height: media.width * 0.03),
+                                        SizedBox(width: media.width * 0.03),
+                                        Text(
+                                          'Indicação',
+                                          style: GoogleFonts.notoSans(
+                                            fontSize: media.width * fourteen,
+                                            color: textColor,
+                                          ),
+                                        ),
+                                        SizedBox(width: media.width * 0.02),
                                         Text(
                                           '$_totalReferrals',
                                           style: GoogleFonts.notoSans(
-                                            fontSize: media.width * 0.12,
-                                            color: buttonColor,
+                                            fontSize: media.width * fourteen,
+                                            color: textColor,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
-                                        Text(
-                                          _totalReferrals == 1 ? 'Indicação' : 'Indicações',
-                                          style: GoogleFonts.notoSans(
-                                            fontSize: media.width * sixteen,
-                                            color: textColor.withValues(alpha: 0.7),
-                                            fontWeight: FontWeight.w500,
-                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: media.width * 0.02),
+
+                                  // Card de Ganhos
+                                  Container(
+                                    width: media.width * 0.9,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: media.width * 0.04,
+                                      vertical: media.width * 0.035,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _primaryColor.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.attach_money,
+                                          size: media.width * 0.06,
+                                          color: _primaryColor,
+                                        ),
+                                        SizedBox(width: media.width * 0.02),
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Ganhos',
+                                              style: GoogleFonts.notoSans(
+                                                fontSize: media.width * twelve,
+                                                color: _primaryColor,
+                                              ),
+                                            ),
+                                            Text(
+                                              'R\$ ${_totalEarned.toStringAsFixed(2).replaceAll('.', ',')}',
+                                              style: GoogleFonts.notoSans(
+                                                fontSize: media.width * 0.045,
+                                                color: _primaryColor,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
@@ -387,9 +378,9 @@ Baixe o app e cadastre-se para começar a ganhar dinheiro fazendo entregas! 🚚
                                     width: media.width * 0.9,
                                     padding: EdgeInsets.all(media.width * 0.05),
                                     decoration: BoxDecoration(
-                                      color: Colors.blue.shade50,
+                                      color: _primaryColor.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(color: Colors.blue.shade200, width: 1.2),
+                                      border: Border.all(color: _primaryColor.withValues(alpha: 0.3), width: 1.2),
                                     ),
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -398,7 +389,7 @@ Baixe o app e cadastre-se para começar a ganhar dinheiro fazendo entregas! 🚚
                                           children: [
                                             Icon(
                                               Icons.info_outline,
-                                              color: Colors.blue.shade700,
+                                              color: _primaryColor,
                                               size: media.width * 0.06,
                                             ),
                                             SizedBox(width: media.width * 0.02),
@@ -406,7 +397,7 @@ Baixe o app e cadastre-se para começar a ganhar dinheiro fazendo entregas! 🚚
                                               'Como funciona?',
                                               style: GoogleFonts.notoSans(
                                                 fontSize: media.width * eighteen,
-                                                color: Colors.blue.shade700,
+                                                color: _primaryColor,
                                                 fontWeight: FontWeight.bold,
                                               ),
                                             ),
@@ -417,7 +408,7 @@ Baixe o app e cadastre-se para começar a ganhar dinheiro fazendo entregas! 🚚
                                         SizedBox(height: media.width * 0.03),
                                         _buildStep('2', 'Eles se cadastram', 'Seus amigos devem usar seu código no cadastro'),
                                         SizedBox(height: media.width * 0.03),
-                                        _buildStep('3', 'Ganhe recompensas', 'Você e seu amigo ganham benefícios especiais'),
+                                        _buildStep('3', 'Ganhe Dinheiro', 'Quando seu amigo concluir as entregas, você ganha!'),
                                       ],
                                     ),
                                   ),
@@ -429,23 +420,23 @@ Baixe o app e cadastre-se para começar a ganhar dinheiro fazendo entregas! 🚚
                                       width: media.width * 0.9,
                                       padding: EdgeInsets.all(media.width * 0.05),
                                       decoration: BoxDecoration(
-                                        color: Colors.green.shade50,
+                                        color: _primaryColor.withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(color: Colors.green.shade200, width: 1.2),
+                                        border: Border.all(color: _primaryColor.withValues(alpha: 0.3), width: 1.2),
                                       ),
                                       child: Column(
                                         children: [
                                           Icon(
                                             Icons.attach_money,
                                             size: media.width * 0.12,
-                                            color: Colors.green.shade700,
+                                            color: _primaryColor,
                                           ),
                                           SizedBox(height: media.width * 0.03),
                                           Text(
                                             'Ganhe R\$ ${_commissionAmount.toStringAsFixed(2)}',
                                             style: GoogleFonts.notoSans(
                                               fontSize: media.width * 0.06,
-                                              color: Colors.green.shade700,
+                                              color: _primaryColor,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
@@ -457,96 +448,6 @@ Baixe o app e cadastre-se para começar a ganhar dinheiro fazendo entregas! 🚚
                                               fontSize: media.width * fourteen,
                                               color: textColor.withValues(alpha: 0.7),
                                             ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-
-                                  // Ganhos
-                                  if (_totalEarned > 0 || _totalPaid > 0) ...[
-                                    SizedBox(height: media.width * 0.05),
-                                    Container(
-                                      width: media.width * 0.9,
-                                      padding: EdgeInsets.all(media.width * 0.05),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(color: borderLines, width: 1.2),
-                                      ),
-                                      child: Column(
-                                        children: [
-                                          Text(
-                                            'Seus Ganhos',
-                                            style: GoogleFonts.notoSans(
-                                              fontSize: media.width * eighteen,
-                                              color: textColor,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          SizedBox(height: media.width * 0.04),
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: Container(
-                                                  padding: EdgeInsets.all(media.width * 0.04),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.green.shade50,
-                                                    borderRadius: BorderRadius.circular(12),
-                                                  ),
-                                                  child: Column(
-                                                    children: [
-                                                      Text(
-                                                        'R\$ ${_totalEarned.toStringAsFixed(2)}',
-                                                        style: GoogleFonts.notoSans(
-                                                          fontSize: media.width * 0.05,
-                                                          color: Colors.green.shade700,
-                                                          fontWeight: FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      SizedBox(height: media.width * 0.01),
-                                                      Text(
-                                                        'Total Ganho',
-                                                        style: GoogleFonts.notoSans(
-                                                          fontSize: media.width * twelve,
-                                                          color: textColor.withValues(alpha: 0.6),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                              SizedBox(width: media.width * 0.03),
-                                              Expanded(
-                                                child: Container(
-                                                  padding: EdgeInsets.all(media.width * 0.04),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.blue.shade50,
-                                                    borderRadius: BorderRadius.circular(12),
-                                                  ),
-                                                  child: Column(
-                                                    children: [
-                                                      Text(
-                                                        'R\$ ${_totalPaid.toStringAsFixed(2)}',
-                                                        style: GoogleFonts.notoSans(
-                                                          fontSize: media.width * 0.05,
-                                                          color: Colors.blue.shade700,
-                                                          fontWeight: FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      SizedBox(height: media.width * 0.01),
-                                                      Text(
-                                                        'Já Recebido',
-                                                        style: GoogleFonts.notoSans(
-                                                          fontSize: media.width * twelve,
-                                                          color: textColor.withValues(alpha: 0.6),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
                                           ),
                                         ],
                                       ),
@@ -604,11 +505,11 @@ Baixe o app e cadastre-se para começar a ganhar dinheiro fazendo entregas! 🚚
                                             String statusText;
                                             switch (status) {
                                               case 'active':
-                                                statusColor = Colors.green;
+                                                statusColor = _primaryColor;
                                                 statusText = 'Ativo';
                                                 break;
                                               case 'registered':
-                                                statusColor = Colors.orange;
+                                                statusColor = _primaryColor;
                                                 statusText = 'Cadastrado';
                                                 break;
                                               default:
@@ -623,7 +524,7 @@ Baixe o app e cadastre-se para começar a ganhar dinheiro fazendo entregas! 🚚
                                                 color: Colors.grey.shade50,
                                                 borderRadius: BorderRadius.circular(12),
                                                 border: Border.all(
-                                                  color: isQualified ? Colors.green.shade200 : borderLines,
+                                                  color: isQualified ? _primaryColor.withValues(alpha: 0.5) : borderLines,
                                                   width: isQualified ? 2 : 1,
                                                 ),
                                               ),
@@ -728,7 +629,7 @@ Baixe o app e cadastre-se para começar a ganhar dinheiro fazendo entregas! 🚚
                                                                 value: progress,
                                                                 backgroundColor: Colors.grey.shade200,
                                                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                                                  isQualified ? Colors.green : buttonColor,
+                                                                  _primaryColor,
                                                                 ),
                                                                 minHeight: media.width * 0.015,
                                                               ),
@@ -756,14 +657,10 @@ Baixe o app e cadastre-se para começar a ganhar dinheiro fazendo entregas! 🚚
                                                     Container(
                                                       padding: EdgeInsets.all(media.width * 0.03),
                                                       decoration: BoxDecoration(
-                                                        color: commissionPaid
-                                                            ? Colors.blue.shade50
-                                                            : Colors.green.shade50,
+                                                        color: _primaryColor.withValues(alpha: 0.1),
                                                         borderRadius: BorderRadius.circular(8),
                                                         border: Border.all(
-                                                          color: commissionPaid
-                                                              ? Colors.blue.shade200
-                                                              : Colors.green.shade200,
+                                                          color: _primaryColor.withValues(alpha: 0.3),
                                                         ),
                                                       ),
                                                       child: Row(
@@ -772,9 +669,7 @@ Baixe o app e cadastre-se para começar a ganhar dinheiro fazendo entregas! 🚚
                                                             commissionPaid
                                                                 ? Icons.check_circle
                                                                 : Icons.attach_money,
-                                                            color: commissionPaid
-                                                                ? Colors.blue.shade700
-                                                                : Colors.green.shade700,
+                                                            color: _primaryColor,
                                                             size: media.width * 0.05,
                                                           ),
                                                           SizedBox(width: media.width * 0.02),
@@ -788,9 +683,7 @@ Baixe o app e cadastre-se para começar a ganhar dinheiro fazendo entregas! 🚚
                                                                       : 'Comissão qualificada',
                                                                   style: GoogleFonts.notoSans(
                                                                     fontSize: media.width * twelve,
-                                                                    color: commissionPaid
-                                                                        ? Colors.blue.shade700
-                                                                        : Colors.green.shade700,
+                                                                    color: _primaryColor,
                                                                     fontWeight: FontWeight.w600,
                                                                   ),
                                                                 ),
@@ -798,9 +691,7 @@ Baixe o app e cadastre-se para começar a ganhar dinheiro fazendo entregas! 🚚
                                                                   'R\$ ${commissionEarned.toStringAsFixed(2)}',
                                                                   style: GoogleFonts.notoSans(
                                                                     fontSize: media.width * fourteen,
-                                                                    color: commissionPaid
-                                                                        ? Colors.blue.shade900
-                                                                        : Colors.green.shade900,
+                                                                    color: _primaryColor,
                                                                     fontWeight: FontWeight.bold,
                                                                   ),
                                                                 ),
@@ -814,7 +705,7 @@ Baixe o app e cadastre-se para começar a ganhar dinheiro fazendo entregas! 🚚
                                                                 vertical: media.width * 0.01,
                                                               ),
                                                               decoration: BoxDecoration(
-                                                                color: Colors.orange,
+                                                                color: _primaryColor,
                                                                 borderRadius: BorderRadius.circular(6),
                                                               ),
                                                               child: Text(
@@ -885,7 +776,7 @@ Baixe o app e cadastre-se para começar a ganhar dinheiro fazendo entregas! 🚚
           width: media.width * 0.08,
           height: media.width * 0.08,
           decoration: BoxDecoration(
-            color: buttonColor,
+            color: _primaryColor,
             shape: BoxShape.circle,
           ),
           child: Center(

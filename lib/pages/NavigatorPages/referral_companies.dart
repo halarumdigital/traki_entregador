@@ -23,15 +23,13 @@ class ReferralCompaniesPage extends StatefulWidget {
 }
 
 class _ReferralCompaniesPageState extends State<ReferralCompaniesPage> {
+  // Cor roxa padrão para a tela de indicações
+  static const Color _primaryColor = Color(0xFF7B1FA2);
+
   bool _isLoading = true;
   String? _referralCode;
   int _totalReferrals = 0;
-  int _pendingReferrals = 0;
-  int _qualifiedReferrals = 0;
-  int _paidReferrals = 0;
   double _totalEarned = 0.0;
-  double _totalPaid = 0.0;
-  double _totalPending = 0.0;
   int _requiredDeliveries = 20;
   double _commissionAmount = 100.0;
   List<Map<String, dynamic>> _referrals = [];
@@ -83,12 +81,7 @@ class _ReferralCompaniesPageState extends State<ReferralCompaniesPage> {
             // Stats
             final stats = data['stats'] ?? {};
             _totalReferrals = stats['totalReferrals'] ?? 0;
-            _pendingReferrals = stats['pendingReferrals'] ?? 0;
-            _qualifiedReferrals = stats['qualifiedReferrals'] ?? 0;
-            _paidReferrals = stats['paidReferrals'] ?? 0;
             _totalEarned = double.tryParse(stats['totalCommissionEarned']?.toString() ?? '0') ?? 0.0;
-            _totalPaid = double.tryParse(stats['totalCommissionPaid']?.toString() ?? '0') ?? 0.0;
-            _totalPending = double.tryParse(stats['totalCommissionPending']?.toString() ?? '0') ?? 0.0;
 
             // Referrals list
             if (data['referrals'] != null && data['referrals'] is List) {
@@ -111,9 +104,6 @@ class _ReferralCompaniesPageState extends State<ReferralCompaniesPage> {
 
           debugPrint('✅ Dados carregados:');
           debugPrint('   - Total: $_totalReferrals empresas');
-          debugPrint('   - Pendentes: $_pendingReferrals');
-          debugPrint('   - Qualificados: $_qualifiedReferrals');
-          debugPrint('   - Pagos: $_paidReferrals');
           debugPrint('   - Required Deliveries: $_requiredDeliveries');
           debugPrint('   - Commission Amount: $_commissionAmount');
         }
@@ -176,7 +166,7 @@ class _ReferralCompaniesPageState extends State<ReferralCompaniesPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Código copiado para a área de transferência!'),
-          backgroundColor: Colors.green,
+          backgroundColor: _primaryColor,
           duration: const Duration(seconds: 2),
         ),
       );
@@ -273,167 +263,157 @@ Baixe o app Fretus e cadastre sua empresa para começar a fazer entregas rápida
                                   // Card com código de indicação
                                   Container(
                                     width: media.width * 0.9,
-                                    padding: EdgeInsets.all(media.width * 0.05),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [Colors.deepPurple, Colors.deepPurple.withValues(alpha: 0.7)],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(16),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.deepPurple.withValues(alpha: 0.3),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 5),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Icon(
-                                          Icons.business,
-                                          size: media.width * 0.15,
-                                          color: Colors.white,
-                                        ),
-                                        SizedBox(height: media.width * 0.04),
-                                        Text(
-                                          'Seu Código de Indicação',
-                                          style: GoogleFonts.notoSans(
-                                            fontSize: media.width * sixteen,
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        SizedBox(height: media.width * 0.03),
-                                        Container(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: media.width * 0.05,
-                                            vertical: media.width * 0.03,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withValues(alpha: 0.2),
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          child: Text(
-                                            _referralCode ?? '------',
-                                            style: GoogleFonts.notoSans(
-                                              fontSize: media.width * 0.08,
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              letterSpacing: 3,
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(height: media.width * 0.05),
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                          children: [
-                                            // Botão Copiar
-                                            Expanded(
-                                              child: InkWell(
-                                                onTap: _copyToClipboard,
-                                                child: Container(
-                                                  padding: EdgeInsets.symmetric(
-                                                    vertical: media.width * 0.03,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.white,
-                                                    borderRadius: BorderRadius.circular(10),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisAlignment: MainAxisAlignment.center,
-                                                    children: [
-                                                      Icon(Icons.copy, color: Colors.deepPurple, size: 20),
-                                                      SizedBox(width: media.width * 0.02),
-                                                      Text(
-                                                        'Copiar',
-                                                        style: GoogleFonts.notoSans(
-                                                          color: Colors.deepPurple,
-                                                          fontWeight: FontWeight.w600,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            SizedBox(width: media.width * 0.03),
-                                            // Botão Compartilhar
-                                            Expanded(
-                                              child: InkWell(
-                                                onTap: _shareReferralCode,
-                                                child: Container(
-                                                  padding: EdgeInsets.symmetric(
-                                                    vertical: media.width * 0.03,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.white,
-                                                    borderRadius: BorderRadius.circular(10),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisAlignment: MainAxisAlignment.center,
-                                                    children: [
-                                                      Icon(Icons.share, color: Colors.deepPurple, size: 20),
-                                                      SizedBox(width: media.width * 0.02),
-                                                      Text(
-                                                        'Compartilhar',
-                                                        style: GoogleFonts.notoSans(
-                                                          color: Colors.deepPurple,
-                                                          fontWeight: FontWeight.w600,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  SizedBox(height: media.width * 0.05),
-
-                                  // Card com estatísticas
-                                  Container(
-                                    width: media.width * 0.9,
-                                    padding: EdgeInsets.all(media.width * 0.05),
+                                    padding: EdgeInsets.all(media.width * 0.04),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(16),
                                       border: Border.all(color: borderLines, width: 1.2),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(alpha: 0.05),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 5),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        // Ícone de empresa
+                                        Container(
+                                          width: media.width * 0.12,
+                                          height: media.width * 0.12,
+                                          decoration: BoxDecoration(
+                                            color: _primaryColor.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Icon(
+                                            Icons.business,
+                                            size: media.width * 0.07,
+                                            color: _primaryColor,
+                                          ),
+                                        ),
+                                        SizedBox(width: media.width * 0.03),
+                                        // Texto do código
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Seu código de indicação',
+                                                style: GoogleFonts.notoSans(
+                                                  fontSize: media.width * twelve,
+                                                  color: textColor.withValues(alpha: 0.6),
+                                                ),
+                                              ),
+                                              SizedBox(height: media.width * 0.01),
+                                              Text(
+                                                _referralCode ?? '------',
+                                                style: GoogleFonts.notoSans(
+                                                  fontSize: media.width * 0.05,
+                                                  color: textColor,
+                                                  fontWeight: FontWeight.bold,
+                                                  letterSpacing: 1,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        // Botões de ação
+                                        InkWell(
+                                          onTap: _copyToClipboard,
+                                          child: Container(
+                                            padding: EdgeInsets.all(media.width * 0.025),
+                                            child: Icon(
+                                              Icons.copy_outlined,
+                                              color: textColor.withValues(alpha: 0.5),
+                                              size: media.width * 0.055,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(width: media.width * 0.02),
+                                        InkWell(
+                                          onTap: _shareReferralCode,
+                                          child: Container(
+                                            padding: EdgeInsets.all(media.width * 0.025),
+                                            child: Icon(
+                                              Icons.share_outlined,
+                                              color: textColor.withValues(alpha: 0.5),
+                                              size: media.width * 0.055,
+                                            ),
+                                          ),
                                         ),
                                       ],
                                     ),
-                                    child: Column(
+                                  ),
+                                  SizedBox(height: media.width * 0.04),
+
+                                  // Linha de indicações
+                                  Container(
+                                    width: media.width * 0.9,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: media.width * 0.04,
+                                      vertical: media.width * 0.03,
+                                    ),
+                                    child: Row(
                                       children: [
                                         Icon(
                                           Icons.business_center,
-                                          size: media.width * 0.12,
-                                          color: Colors.deepPurple,
+                                          size: media.width * 0.06,
+                                          color: _primaryColor,
                                         ),
-                                        SizedBox(height: media.width * 0.03),
+                                        SizedBox(width: media.width * 0.03),
+                                        Text(
+                                          'Indicação',
+                                          style: GoogleFonts.notoSans(
+                                            fontSize: media.width * fourteen,
+                                            color: textColor,
+                                          ),
+                                        ),
+                                        SizedBox(width: media.width * 0.02),
                                         Text(
                                           '$_totalReferrals',
                                           style: GoogleFonts.notoSans(
-                                            fontSize: media.width * 0.12,
-                                            color: Colors.deepPurple,
+                                            fontSize: media.width * fourteen,
+                                            color: textColor,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
-                                        Text(
-                                          _totalReferrals == 1 ? 'Empresa Indicada' : 'Empresas Indicadas',
-                                          style: GoogleFonts.notoSans(
-                                            fontSize: media.width * sixteen,
-                                            color: textColor.withValues(alpha: 0.7),
-                                            fontWeight: FontWeight.w500,
-                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: media.width * 0.02),
+
+                                  // Card de Ganhos
+                                  Container(
+                                    width: media.width * 0.9,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: media.width * 0.04,
+                                      vertical: media.width * 0.035,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _primaryColor.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.attach_money,
+                                          size: media.width * 0.06,
+                                          color: _primaryColor,
+                                        ),
+                                        SizedBox(width: media.width * 0.02),
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Ganhos',
+                                              style: GoogleFonts.notoSans(
+                                                fontSize: media.width * twelve,
+                                                color: _primaryColor,
+                                              ),
+                                            ),
+                                            Text(
+                                              'R\$ ${_totalEarned.toStringAsFixed(2).replaceAll('.', ',')}',
+                                              style: GoogleFonts.notoSans(
+                                                fontSize: media.width * 0.045,
+                                                color: _primaryColor,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
@@ -445,9 +425,9 @@ Baixe o app Fretus e cadastre sua empresa para começar a fazer entregas rápida
                                     width: media.width * 0.9,
                                     padding: EdgeInsets.all(media.width * 0.05),
                                     decoration: BoxDecoration(
-                                      color: Colors.purple.shade50,
+                                      color: _primaryColor.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(color: Colors.purple.shade200, width: 1.2),
+                                      border: Border.all(color: _primaryColor.withValues(alpha: 0.3), width: 1.2),
                                     ),
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -456,7 +436,7 @@ Baixe o app Fretus e cadastre sua empresa para começar a fazer entregas rápida
                                           children: [
                                             Icon(
                                               Icons.info_outline,
-                                              color: Colors.purple.shade700,
+                                              color: _primaryColor,
                                               size: media.width * 0.06,
                                             ),
                                             SizedBox(width: media.width * 0.02),
@@ -464,7 +444,7 @@ Baixe o app Fretus e cadastre sua empresa para começar a fazer entregas rápida
                                               'Como funciona?',
                                               style: GoogleFonts.notoSans(
                                                 fontSize: media.width * eighteen,
-                                                color: Colors.purple.shade700,
+                                                color: _primaryColor,
                                                 fontWeight: FontWeight.bold,
                                               ),
                                             ),
@@ -475,7 +455,7 @@ Baixe o app Fretus e cadastre sua empresa para começar a fazer entregas rápida
                                         SizedBox(height: media.width * 0.03),
                                         _buildStep('2', 'Elas se cadastram', 'As empresas devem usar seu código no cadastro'),
                                         SizedBox(height: media.width * 0.03),
-                                        _buildStep('3', 'Ganhe recompensas', 'Você ganha benefícios quando elas fazem pedidos'),
+                                        _buildStep('3', 'Ganhe Dinheiro', 'Quando a empresa fizer entregas, você ganha!'),
                                       ],
                                     ),
                                   ),
@@ -487,154 +467,34 @@ Baixe o app Fretus e cadastre sua empresa para começar a fazer entregas rápida
                                       width: media.width * 0.9,
                                       padding: EdgeInsets.all(media.width * 0.05),
                                       decoration: BoxDecoration(
-                                        color: Colors.green.shade50,
+                                        color: _primaryColor.withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(color: Colors.green.shade200, width: 1.2),
+                                        border: Border.all(color: _primaryColor.withValues(alpha: 0.3), width: 1.2),
                                       ),
                                       child: Column(
                                         children: [
                                           Icon(
                                             Icons.attach_money,
                                             size: media.width * 0.12,
-                                            color: Colors.green.shade700,
+                                            color: _primaryColor,
                                           ),
                                           SizedBox(height: media.width * 0.03),
                                           Text(
                                             'Ganhe R\$ ${_commissionAmount.toStringAsFixed(2)}',
                                             style: GoogleFonts.notoSans(
                                               fontSize: media.width * 0.06,
-                                              color: Colors.green.shade700,
+                                              color: _primaryColor,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
                                           SizedBox(height: media.width * 0.02),
                                           Text(
-                                            'Para cada empresa que completar $_requiredDeliveries pedidos',
+                                            'Para cada empresa que completar $_requiredDeliveries entregas',
                                             textAlign: TextAlign.center,
                                             style: GoogleFonts.notoSans(
                                               fontSize: media.width * fourteen,
                                               color: textColor.withValues(alpha: 0.7),
                                             ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-
-                                  // Ganhos
-                                  if (_totalEarned > 0 || _totalPaid > 0 || _totalPending > 0) ...[
-                                    SizedBox(height: media.width * 0.05),
-                                    Container(
-                                      width: media.width * 0.9,
-                                      padding: EdgeInsets.all(media.width * 0.05),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(color: borderLines, width: 1.2),
-                                      ),
-                                      child: Column(
-                                        children: [
-                                          Text(
-                                            'Seus Ganhos',
-                                            style: GoogleFonts.notoSans(
-                                              fontSize: media.width * eighteen,
-                                              color: textColor,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          SizedBox(height: media.width * 0.04),
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: Container(
-                                                  padding: EdgeInsets.all(media.width * 0.04),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.green.shade50,
-                                                    borderRadius: BorderRadius.circular(12),
-                                                  ),
-                                                  child: Column(
-                                                    children: [
-                                                      Text(
-                                                        'R\$ ${_totalEarned.toStringAsFixed(2)}',
-                                                        style: GoogleFonts.notoSans(
-                                                          fontSize: media.width * 0.045,
-                                                          color: Colors.green.shade700,
-                                                          fontWeight: FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      SizedBox(height: media.width * 0.01),
-                                                      Text(
-                                                        'Total Ganho',
-                                                        style: GoogleFonts.notoSans(
-                                                          fontSize: media.width * twelve,
-                                                          color: textColor.withValues(alpha: 0.6),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                              SizedBox(width: media.width * 0.02),
-                                              Expanded(
-                                                child: Container(
-                                                  padding: EdgeInsets.all(media.width * 0.04),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.blue.shade50,
-                                                    borderRadius: BorderRadius.circular(12),
-                                                  ),
-                                                  child: Column(
-                                                    children: [
-                                                      Text(
-                                                        'R\$ ${_totalPaid.toStringAsFixed(2)}',
-                                                        style: GoogleFonts.notoSans(
-                                                          fontSize: media.width * 0.045,
-                                                          color: Colors.blue.shade700,
-                                                          fontWeight: FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      SizedBox(height: media.width * 0.01),
-                                                      Text(
-                                                        'Já Recebido',
-                                                        style: GoogleFonts.notoSans(
-                                                          fontSize: media.width * twelve,
-                                                          color: textColor.withValues(alpha: 0.6),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                              SizedBox(width: media.width * 0.02),
-                                              Expanded(
-                                                child: Container(
-                                                  padding: EdgeInsets.all(media.width * 0.04),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.orange.shade50,
-                                                    borderRadius: BorderRadius.circular(12),
-                                                  ),
-                                                  child: Column(
-                                                    children: [
-                                                      Text(
-                                                        'R\$ ${_totalPending.toStringAsFixed(2)}',
-                                                        style: GoogleFonts.notoSans(
-                                                          fontSize: media.width * 0.045,
-                                                          color: Colors.orange.shade700,
-                                                          fontWeight: FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      SizedBox(height: media.width * 0.01),
-                                                      Text(
-                                                        'Pendente',
-                                                        style: GoogleFonts.notoSans(
-                                                          fontSize: media.width * twelve,
-                                                          color: textColor.withValues(alpha: 0.6),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
                                           ),
                                         ],
                                       ),
@@ -656,7 +516,7 @@ Baixe o app Fretus e cadastre sua empresa para começar a fazer entregas rápida
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            'Empresas Indicadas',
+                                            'Suas Indicações',
                                             style: GoogleFonts.notoSans(
                                               fontSize: media.width * eighteen,
                                               color: textColor,
@@ -687,17 +547,17 @@ Baixe o app Fretus e cadastre sua empresa para começar a fazer entregas rápida
                                             String statusText;
                                             switch (status) {
                                               case 'paid':
-                                                statusColor = Colors.blue;
+                                                statusColor = _primaryColor;
                                                 statusText = 'Pago';
                                                 break;
                                               case 'qualified':
-                                                statusColor = Colors.green;
+                                                statusColor = _primaryColor;
                                                 statusText = 'Qualificado';
                                                 break;
                                               case 'pending':
                                               default:
-                                                statusColor = Colors.orange;
-                                                statusText = 'Pendente';
+                                                statusColor = _primaryColor;
+                                                statusText = 'Cadastrado';
                                             }
 
                                             return Container(
@@ -707,7 +567,7 @@ Baixe o app Fretus e cadastre sua empresa para começar a fazer entregas rápida
                                                 color: Colors.grey.shade50,
                                                 borderRadius: BorderRadius.circular(12),
                                                 border: Border.all(
-                                                  color: isQualified ? Colors.green.shade200 : borderLines,
+                                                  color: isQualified ? _primaryColor.withValues(alpha: 0.5) : borderLines,
                                                   width: isQualified ? 2 : 1,
                                                 ),
                                               ),
@@ -759,7 +619,7 @@ Baixe o app Fretus e cadastre sua empresa para começar a fazer entregas rápida
                                                   ),
                                                   SizedBox(height: media.width * 0.03),
 
-                                                  // Progresso de pedidos
+                                                  // Progresso de entregas
                                                   Row(
                                                     children: [
                                                       Icon(
@@ -799,7 +659,7 @@ Baixe o app Fretus e cadastre sua empresa para começar a fazer entregas rápida
                                                                 value: progress,
                                                                 backgroundColor: Colors.grey.shade200,
                                                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                                                  isQualified ? Colors.green : Colors.deepPurple,
+                                                                  _primaryColor,
                                                                 ),
                                                                 minHeight: media.width * 0.015,
                                                               ),
@@ -807,7 +667,7 @@ Baixe o app Fretus e cadastre sua empresa para começar a fazer entregas rápida
                                                             if (remaining > 0) ...[
                                                               SizedBox(height: media.width * 0.01),
                                                               Text(
-                                                                'Faltam $remaining pedidos',
+                                                                'Faltam $remaining entregas',
                                                                 style: GoogleFonts.notoSans(
                                                                   fontSize: media.width * twelve,
                                                                   color: textColor.withValues(alpha: 0.5),
@@ -827,14 +687,10 @@ Baixe o app Fretus e cadastre sua empresa para começar a fazer entregas rápida
                                                     Container(
                                                       padding: EdgeInsets.all(media.width * 0.03),
                                                       decoration: BoxDecoration(
-                                                        color: commissionPaid
-                                                            ? Colors.blue.shade50
-                                                            : Colors.green.shade50,
+                                                        color: _primaryColor.withValues(alpha: 0.1),
                                                         borderRadius: BorderRadius.circular(8),
                                                         border: Border.all(
-                                                          color: commissionPaid
-                                                              ? Colors.blue.shade200
-                                                              : Colors.green.shade200,
+                                                          color: _primaryColor.withValues(alpha: 0.3),
                                                         ),
                                                       ),
                                                       child: Row(
@@ -843,9 +699,7 @@ Baixe o app Fretus e cadastre sua empresa para começar a fazer entregas rápida
                                                             commissionPaid
                                                                 ? Icons.check_circle
                                                                 : Icons.attach_money,
-                                                            color: commissionPaid
-                                                                ? Colors.blue.shade700
-                                                                : Colors.green.shade700,
+                                                            color: _primaryColor,
                                                             size: media.width * 0.05,
                                                           ),
                                                           SizedBox(width: media.width * 0.02),
@@ -859,9 +713,7 @@ Baixe o app Fretus e cadastre sua empresa para começar a fazer entregas rápida
                                                                       : 'Comissão qualificada',
                                                                   style: GoogleFonts.notoSans(
                                                                     fontSize: media.width * twelve,
-                                                                    color: commissionPaid
-                                                                        ? Colors.blue.shade700
-                                                                        : Colors.green.shade700,
+                                                                    color: _primaryColor,
                                                                     fontWeight: FontWeight.w600,
                                                                   ),
                                                                 ),
@@ -869,9 +721,7 @@ Baixe o app Fretus e cadastre sua empresa para começar a fazer entregas rápida
                                                                   'R\$ ${commissionAmount.toStringAsFixed(2)}',
                                                                   style: GoogleFonts.notoSans(
                                                                     fontSize: media.width * fourteen,
-                                                                    color: commissionPaid
-                                                                        ? Colors.blue.shade900
-                                                                        : Colors.green.shade900,
+                                                                    color: _primaryColor,
                                                                     fontWeight: FontWeight.bold,
                                                                   ),
                                                                 ),
@@ -885,7 +735,7 @@ Baixe o app Fretus e cadastre sua empresa para começar a fazer entregas rápida
                                                                 vertical: media.width * 0.01,
                                                               ),
                                                               decoration: BoxDecoration(
-                                                                color: Colors.orange,
+                                                                color: _primaryColor,
                                                                 borderRadius: BorderRadius.circular(6),
                                                               ),
                                                               child: Text(
@@ -956,7 +806,7 @@ Baixe o app Fretus e cadastre sua empresa para começar a fazer entregas rápida
           width: media.width * 0.08,
           height: media.width * 0.08,
           decoration: BoxDecoration(
-            color: Colors.deepPurple,
+            color: _primaryColor,
             shape: BoxShape.circle,
           ),
           child: Center(

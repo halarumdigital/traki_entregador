@@ -62,12 +62,7 @@
       "Bash(/home/gilliard/flutter/bin/flutter clean:*)",
       "Bash(unset CXX CC)",
       "Bash(/home/gilliard/flutter/bin/flutter pub:*)",
-      "Bash(/home/gilliard/flutter/bin/flutter devices:*)",
-      "mcp__figma__get_figma_data",
-      "Bash(xargs:*)",
-      "mcp__figma__download_figma_images",
-      "Bash(file:*)",
-      "WebFetch(domain:www.figma.com)"
+      "Bash(/home/gilliard/flutter/bin/flutter devices:*)"
     ],
     "deny": [],
     "ask": []

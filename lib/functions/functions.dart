@@ -62,7 +62,7 @@ String packageName = '';
 String signKey = '';
 
 //base url
-String url = 'http://192.168.1.2:5010/'; //add '/' at the end of the url as 'https://url.com/'
+String url = 'http://192.168.1.2:5030/'; //add '/' at the end of the url as 'https://url.com/'
 String mapkey =
     (platform == TargetPlatform.android) ? 'AIzaSyANsPBDNfBx4_mjWvBaYxNVHZh2PPEExsM' : 'ios map key';
 

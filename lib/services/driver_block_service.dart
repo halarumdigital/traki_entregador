@@ -215,9 +215,9 @@ class DriverBlockService {
       debugPrint('✅ [DriverBlockService] Dados limpos com sucesso');
 
       if (context.mounted) {
-        // Importar dinamicamente para evitar dependência circular
+        // Redirecionar para tela de login
         Navigator.of(context).pushNamedAndRemoveUntil(
-          '/',
+          '/login',
           (route) => false,
         );
       }

@@ -101,62 +101,56 @@ class _OnlineOfflineToggleState extends State<OnlineOfflineToggle> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isOnline
-              ? [Color(0xFF4CAF50), Color(0xFF388E3C)]
-              : [Color(0xFF9E9E9E), Color(0xFF616161)],
-        ),
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: (isOnline ? Colors.green : Colors.grey).withValues(alpha: 0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
+    if (isLoading) {
+      return Row(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isOnline ? Icons.check_circle : Icons.cancel,
-            color: Colors.white,
-            size: 24,
-          ),
-          const SizedBox(width: 12),
-          Text(
-            isOnline ? 'ONLINE' : 'OFFLINE',
-            style: const TextStyle(
+        children: const [
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
               color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
+              strokeWidth: 2,
             ),
           ),
-          const SizedBox(width: 12),
-          if (isLoading)
-            const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2,
-              ),
-            )
-          else
-            Switch(
-              value: isOnline,
-              onChanged: _toggleStatus,
-              activeThumbColor: Colors.white,
-              activeTrackColor: Color(0xFF81C784),
-              inactiveThumbColor: Colors.white,
-              inactiveTrackColor: Color(0xFFBDBDBD),
+          SizedBox(width: 8),
+          Text(
+            'Carregando...',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
             ),
+          ),
         ],
-      ),
+      );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Transform.scale(
+          scale: 0.8,
+          child: Switch(
+            value: isOnline,
+            onChanged: _toggleStatus,
+            activeThumbColor: Colors.white,
+            activeTrackColor: const Color(0xFF4CAF50),
+            inactiveThumbColor: Colors.white,
+            inactiveTrackColor: const Color(0xFFBDBDBD),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          isOnline ? 'Ativo' : 'Inativo',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }

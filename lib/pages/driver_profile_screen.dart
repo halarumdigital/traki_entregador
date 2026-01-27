@@ -1,9 +1,19 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../styles/styles.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../styles/app_colors.dart';
 import '../functions/functions.dart';
 import '../services/local_storage_service.dart';
+import '../services/delivery_service.dart';
+import 'NavigatorPages/carteira_page.dart';
+import 'NavigatorPages/entregas_ativas.dart';
+import 'NavigatorPages/notification.dart';
+import 'NavigatorPages/referral.dart';
+import 'NavigatorPages/faq.dart';
+import 'NavigatorPages/support_tickets.dart';
+import 'auth/login_screen_new.dart';
+import 'profile_details_screen.dart';
 
 class DriverProfileScreen extends StatefulWidget {
   const DriverProfileScreen({super.key});
@@ -14,21 +24,41 @@ class DriverProfileScreen extends StatefulWidget {
 
 class _DriverProfileScreenState extends State<DriverProfileScreen> {
   Map<String, dynamic>? _driverProfile;
+  Map<String, dynamic>? _commissionStats;
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadDriverProfile();
+    _loadData();
   }
 
-  Future<void> _loadDriverProfile() async {
+  Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
     });
 
+    await Future.wait([
+      _loadDriverProfile(),
+      _loadCommissionStats(),
+    ]);
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _loadDriverProfile() async {
     try {
       debugPrint('👤 Buscando perfil do motorista...');
+
+      // Primeiro tentar do cache
+      final cachedData = await LocalStorageService.getDriverData();
+      if (cachedData != null) {
+        setState(() {
+          _driverProfile = cachedData;
+        });
+      }
 
       final token = await LocalStorageService.getAccessToken();
       if (token == null) {
@@ -37,13 +67,11 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       }
 
       final response = await http.get(
-        Uri.parse('${url}api/v1/driver/me'),
+        Uri.parse('${url}api/auth/me'),
         headers: {
           'Authorization': 'Bearer $token',
         },
       );
-
-      debugPrint('📥 Status Code: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(response.body);
@@ -52,389 +80,490 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
             _driverProfile = jsonResponse['data'];
           });
           debugPrint('✅ Perfil carregado com sucesso');
-          debugPrint('📦 Dados: ${jsonResponse['data']}');
         }
-      } else {
-        debugPrint('❌ Erro ao carregar perfil: ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('❌ Erro ao buscar perfil: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+    }
+  }
+
+  Future<void> _loadCommissionStats() async {
+    try {
+      final stats = await DeliveryService.getCommissionStats();
+      if (stats != null && mounted) {
+        setState(() {
+          _commissionStats = stats;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao buscar estatísticas: $e');
+    }
+  }
+
+  Future<void> _logout() async {
+    try {
+      await LocalStorageService.clearSession();
+      userDetails.clear();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreenNew()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao fazer logout: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Extrair dados do perfil
+    final personalData = _driverProfile?['personalData'] as Map<String, dynamic>?;
+
+    // Tentar diferentes estruturas de dados para o nome (igual ao home_simple)
+    String fullName = 'Motorista';
+    if (_driverProfile != null) {
+      // Estrutura nova: personalData.fullName
+      if (personalData?['fullName'] != null && personalData!['fullName'].toString().isNotEmpty) {
+        fullName = personalData['fullName'].toString();
+      }
+      // Estrutura antiga: name diretamente
+      else if (_driverProfile!['name'] != null && _driverProfile!['name'].toString().isNotEmpty) {
+        fullName = _driverProfile!['name'].toString();
+      }
+    }
+
+    final String email = personalData?['email'] ?? '';
+    final String? profilePicture = personalData?['profilePicture'];
+    final ratingValue = _driverProfile?['rating'];
+    final double rating = ratingValue is num
+        ? ratingValue.toDouble()
+        : (double.tryParse(ratingValue?.toString() ?? '0') ?? 0.0);
+    final noOfRatingsValue = _driverProfile?['noOfRatings'];
+    final int noOfRatings = noOfRatingsValue is int
+        ? noOfRatingsValue
+        : (int.tryParse(noOfRatingsValue?.toString() ?? '0') ?? 0);
+    final totalDeliveriesValue = _commissionStats?['currentMonthDeliveries'];
+    final int totalDeliveries = totalDeliveriesValue is int
+        ? totalDeliveriesValue
+        : (int.tryParse(totalDeliveriesValue?.toString() ?? '0') ?? 0);
+
     return Scaffold(
-      backgroundColor: page,
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        backgroundColor: buttonColor,
-        title: const Text('Meu Perfil', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Perfil',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
-        elevation: 2,
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
-          : _driverProfile == null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        size: 60,
-                        color: Colors.red,
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Erro ao carregar perfil',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: textColor,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Tente novamente mais tarde',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: textColor.withOpacity(0.7),
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-                      ElevatedButton(
-                        onPressed: _loadDriverProfile,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: buttonColor,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 40,
-                            vertical: 15,
-                          ),
-                        ),
-                        child: const Text(
-                          'Tentar Novamente',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _loadDriverProfile,
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Foto e informações básicas
-                        Center(
-                          child: Column(
-                            children: [
-                              // Foto do perfil
-                              Container(
-                                width: 120,
-                                height: 120,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.white,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.2),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 5),
-                                    ),
-                                  ],
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          : RefreshIndicator(
+              onRefresh: _loadData,
+              color: AppColors.primary,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  children: [
+                    // Header com foto e informações
+                    Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.all(20),
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ProfileDetailsScreen(),
+                            ),
+                          );
+                        },
+                        child: Row(
+                          children: [
+                            // Foto do perfil
+                            Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.grey[200],
+                                border: Border.all(
+                                  color: AppColors.primary.withOpacity(0.3),
+                                  width: 2,
                                 ),
-                                child: _driverProfile!['profilePicture'] != null &&
-                                        _driverProfile!['profilePicture']
-                                            .toString()
-                                            .isNotEmpty
-                                    ? ClipOval(
-                                        child: Image.network(
-                                          '$url${_driverProfile!['profilePicture']}',
-                                          fit: BoxFit.cover,
-                                          errorBuilder:
-                                              (context, error, stackTrace) {
-                                            return Icon(
-                                              Icons.person,
-                                              size: 70,
-                                              color: Colors.grey[600],
-                                            );
-                                          },
-                                        ),
-                                      )
-                                    : Icon(
-                                        Icons.person,
-                                        size: 70,
-                                        color: Colors.grey[600],
+                              ),
+                              child: profilePicture != null && profilePicture.isNotEmpty
+                                  ? ClipOval(
+                                      child: Image.network(
+                                        '$url$profilePicture',
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return const Icon(
+                                            Icons.person,
+                                            size: 35,
+                                            color: Colors.grey,
+                                          );
+                                        },
                                       ),
-                              ),
-                              const SizedBox(height: 20),
-                              // Nome
-                              Text(
-                                _driverProfile!['name'] ?? 'Motorista',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: textColor,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 5),
-                              // Email
-                              Text(
-                                _driverProfile!['email'] ?? '',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: textColor.withOpacity(0.7),
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-
-                        // Dados Pessoais
-                        _buildSectionTitle('Dados Pessoais'),
-                        _buildInfoCard([
-                          if (_driverProfile!['mobile'] != null)
-                            _buildInfoRow(
-                              Icons.phone,
-                              'Celular',
-                              _driverProfile!['mobile'],
-                            ),
-                          if (_driverProfile!['cpf'] != null)
-                            _buildInfoRow(
-                              Icons.credit_card,
-                              'CPF',
-                              _driverProfile!['cpf'],
-                            ),
-                          if (_driverProfile!['email'] != null)
-                            _buildInfoRow(
-                              Icons.email,
-                              'Email',
-                              _driverProfile!['email'],
-                            ),
-                        ]),
-                        const SizedBox(height: 20),
-
-                        // Dados do Veículo
-                        _buildSectionTitle('Dados do Veículo'),
-                        _buildInfoCard([
-                          if (_driverProfile!['carNumber'] != null)
-                            _buildInfoRow(
-                              Icons.pin,
-                              'Placa',
-                              _driverProfile!['carNumber'],
-                            ),
-                          if (_driverProfile!['carColor'] != null)
-                            _buildInfoRow(
-                              Icons.color_lens,
-                              'Cor',
-                              _driverProfile!['carColor'],
-                            ),
-                          if (_driverProfile!['carYear'] != null)
-                            _buildInfoRow(
-                              Icons.calendar_today,
-                              'Ano',
-                              _driverProfile!['carYear'].toString(),
-                            ),
-                          if (_driverProfile!['carMake'] != null)
-                            _buildInfoRow(
-                              Icons.directions_car,
-                              'Marca',
-                              _driverProfile!['carMake'],
-                            ),
-                          if (_driverProfile!['carModel'] != null)
-                            _buildInfoRow(
-                              Icons.car_rental,
-                              'Modelo',
-                              _driverProfile!['carModel'],
-                            ),
-                        ]),
-                        const SizedBox(height: 20),
-
-                        // Rating
-                        _buildSectionTitle('Avaliações'),
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 10,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              Column(
-                                children: [
-                                  const Icon(
-                                    Icons.star,
-                                    color: Colors.amber,
-                                    size: 40,
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    _driverProfile!['rating']?.toString() ?? '0.0',
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: textColor,
+                                    )
+                                  : const Icon(
+                                      Icons.person,
+                                      size: 35,
+                                      color: Colors.grey,
                                     ),
-                                  ),
+                            ),
+                            const SizedBox(width: 16),
+                            // Nome e email
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
                                   Text(
-                                    'Média',
+                                    'Oi,',
                                     style: TextStyle(
                                       fontSize: 14,
-                                      color: textColor.withOpacity(0.7),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Column(
-                                children: [
-                                  Icon(
-                                    Icons.rate_review,
-                                    color: buttonColor,
-                                    size: 40,
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    _driverProfile!['noOfRatings']?.toString() ?? '0',
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: textColor,
+                                      color: AppColors.textSecondary,
                                     ),
                                   ),
                                   Text(
-                                    'Avaliações',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: textColor.withOpacity(0.7),
+                                    fullName,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
                                     ),
                                   ),
+                                  if (email.isNotEmpty)
+                                    Text(
+                                      email,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
                                 ],
                               ),
-                            ],
-                          ),
+                            ),
+                            const Icon(
+                              Icons.chevron_right,
+                              color: AppColors.textSecondary,
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 20),
-
-                        // Status
-                        _buildSectionTitle('Status'),
-                        _buildInfoCard([
-                          _buildInfoRow(
-                            Icons.check_circle,
-                            'Conta Ativa',
-                            _driverProfile!['active'] == true ? 'Sim' : 'Não',
-                          ),
-                          _buildInfoRow(
-                            Icons.verified,
-                            'Aprovado',
-                            _driverProfile!['approve'] == true ? 'Sim' : 'Não',
-                          ),
-                          _buildInfoRow(
-                            Icons.upload_file,
-                            'Documentos Enviados',
-                            _driverProfile!['uploadedDocuments'] == true
-                                ? 'Sim'
-                                : 'Não',
-                          ),
-                          _buildInfoRow(
-                            Icons.online_prediction,
-                            'Disponível',
-                            _driverProfile!['available'] == true ? 'Sim' : 'Não',
-                          ),
-                        ]),
-                      ],
+                      ),
                     ),
-                  ),
+
+                    const SizedBox(height: 16),
+
+                    // Estatísticas
+                    Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          // Média
+                          _buildStatItem(
+                            icon: Icons.star,
+                            iconColor: Colors.amber,
+                            value: rating.toStringAsFixed(1),
+                            label: 'Média',
+                          ),
+                          // Avaliações
+                          _buildStatItem(
+                            icon: Icons.chat_bubble,
+                            iconColor: AppColors.primary,
+                            value: noOfRatings.toString(),
+                            label: 'Avaliações',
+                          ),
+                          // Entregas
+                          _buildStatItem(
+                            icon: Icons.inventory_2_outlined,
+                            iconColor: AppColors.primary,
+                            value: totalDeliveries.toString(),
+                            label: 'Entregas',
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Seção Conta
+                    _buildSectionHeader('Conta'),
+                    Container(
+                      color: Colors.white,
+                      child: Column(
+                        children: [
+                          _buildMenuItem(
+                            icon: Icons.person_outline,
+                            title: 'Meu Perfil',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ProfileDetailsScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                          _buildDivider(),
+                          _buildMenuItem(
+                            icon: Icons.inventory_2_outlined,
+                            title: 'Minhas Entregas',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const EntregasAtivasScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                          _buildDivider(),
+                          _buildMenuItem(
+                            icon: Icons.notifications_outlined,
+                            title: 'Notificações',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const NotificationPage(),
+                                ),
+                              );
+                            },
+                          ),
+                          _buildDivider(),
+                          _buildMenuItem(
+                            icon: Icons.people_outline,
+                            title: 'Indicações',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ReferralPage(),
+                                ),
+                              );
+                            },
+                          ),
+                          _buildDivider(),
+                          _buildMenuItem(
+                            icon: Icons.attach_money,
+                            title: 'Minha Carteira',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const CarteiraPage(),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Seção Adicionais
+                    _buildSectionHeader('Adicionais'),
+                    Container(
+                      color: Colors.white,
+                      child: Column(
+                        children: [
+                          _buildMenuItem(
+                            icon: Icons.folder_outlined,
+                            title: 'FAQ',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const Faq(),
+                                ),
+                              );
+                            },
+                          ),
+                          _buildDivider(),
+                          _buildMenuItem(
+                            icon: Icons.grid_view_outlined,
+                            title: 'Meus tickets',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const SupportTicketsPage(),
+                                ),
+                              );
+                            },
+                          ),
+                          _buildDivider(),
+                          _buildMenuItem(
+                            icon: Icons.edit_outlined,
+                            title: 'Alterar senha',
+                            onTap: () {
+                              // TODO: Navegar para alterar senha
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Botão Sair
+                    Container(
+                      color: Colors.white,
+                      child: _buildMenuItem(
+                        icon: Icons.logout,
+                        title: 'Sair',
+                        onTap: () {
+                          _showLogoutDialog();
+                        },
+                        showArrow: true,
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+                  ],
                 ),
+              ),
+            ),
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+  Widget _buildStatItem({
+    required IconData icon,
+    required Color iconColor,
+    required String value,
+    required String label,
+  }) {
+    return Column(
+      children: [
+        Icon(
+          icon,
+          color: iconColor,
+          size: 28,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.1),
+      ),
       child: Text(
         title,
         style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: textColor,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: AppColors.primary,
         ),
       ),
     );
   }
 
-  Widget _buildInfoCard(List<Widget> children) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        children: children,
+  Widget _buildMenuItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    bool showArrow = true,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: AppColors.textSecondary,
+              size: 24,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            if (showArrow)
+              const Icon(
+                Icons.chevron_right,
+                color: AppColors.textSecondary,
+              ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            color: buttonColor,
-            size: 20,
+  Widget _buildDivider() {
+    return const Divider(
+      height: 1,
+      thickness: 1,
+      indent: 56,
+      color: Color(0xFFEEEEEE),
+    );
+  }
+
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sair'),
+        content: const Text('Deseja realmente sair da sua conta?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: textColor.withOpacity(0.6),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                  ),
-                ),
-              ],
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _logout();
+            },
+            child: const Text(
+              'Sair',
+              style: TextStyle(color: Colors.red),
             ),
           ),
         ],

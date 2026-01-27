@@ -25,13 +25,24 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
   bool isLoading = true;
   String? errorMessage;
   Timer? _timer;
+  String? _profileImagePath;
 
   @override
   void initState() {
     super.initState();
+    _loadProfileImage();
     _loadStatus();
     // Atualizar a cada 30 segundos
     _timer = Timer.periodic(const Duration(seconds: 30), (_) => _loadStatus());
+  }
+
+  Future<void> _loadProfileImage() async {
+    final imagePath = await LocalStorageService.getProfileImagePath();
+    if (mounted) {
+      setState(() {
+        _profileImagePath = imagePath;
+      });
+    }
   }
 
   @override
@@ -78,21 +89,20 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.celebration, color: Colors.green, size: 32),
+            Icon(Icons.celebration, color: Color(0xFF8719CA), size: 32), // Roxo do tema
             SizedBox(width: 8),
             Text('Cadastro Aprovado!'),
           ],
         ),
         content: Text(
-          'Seu cadastro foi aprovado pelo administrador. '
-          'Você já pode fazer login e começar a trabalhar!',
+          'Parabéns seu cadastro foi aprovado pela Traki! Você já pode fazer login e começar e entregar.',
         ),
         actions: [
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: buttonColor,
+                backgroundColor: Color(0xFF8719CA), // Roxo do tema
                 padding: EdgeInsets.symmetric(vertical: 16),
               ),
               onPressed: () {
@@ -102,7 +112,7 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
                   (route) => false,
                 );
               },
-              child: Text('Ir para Login', style: TextStyle(fontSize: 16)),
+              child: Text('Ir para Login', style: TextStyle(fontSize: 16, color: Colors.white)),
             ),
           ),
         ],
@@ -116,15 +126,15 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
       return Scaffold(
         backgroundColor: page,
         appBar: AppBar(
-          backgroundColor: topBar,
-          title: Text('Status do Cadastro', style: TextStyle(color: textColor)),
+          backgroundColor: Color(0xFF8719CA), // Roxo do tema
+          title: Text('Status do Cadastro', style: TextStyle(color: Colors.white)),
           automaticallyImplyLeading: false,
         ),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(color: buttonColor),
+              CircularProgressIndicator(color: Color(0xFF8719CA)), // Roxo do tema
               SizedBox(height: 16),
               Text('Carregando seu status...', style: TextStyle(color: textColor)),
             ],
@@ -137,8 +147,8 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
       return Scaffold(
         backgroundColor: page,
         appBar: AppBar(
-          backgroundColor: topBar,
-          title: Text('Status do Cadastro', style: TextStyle(color: textColor)),
+          backgroundColor: Color(0xFF8719CA), // Roxo do tema
+          title: Text('Status do Cadastro', style: TextStyle(color: Colors.white)),
         ),
         body: Center(
           child: Padding(
@@ -162,7 +172,7 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
                 SizedBox(height: 24),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: buttonColor,
+                    backgroundColor: Color(0xFF8719CA), // Roxo do tema
                     padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   ),
                   onPressed: () {
@@ -172,8 +182,8 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
                     });
                     _loadStatus();
                   },
-                  icon: Icon(Icons.refresh),
-                  label: Text('Tentar Novamente'),
+                  icon: Icon(Icons.refresh, color: Colors.white),
+                  label: Text('Tentar Novamente', style: TextStyle(color: Colors.white)),
                 ),
               ],
             ),
@@ -185,17 +195,17 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
     return Scaffold(
       backgroundColor: page,
       appBar: AppBar(
-        backgroundColor: topBar,
-        title: Text('Status do Cadastro', style: TextStyle(color: textColor)),
+        backgroundColor: Color(0xFF8719CA), // Roxo do tema
+        title: Text('Status do Cadastro', style: TextStyle(color: Colors.white)),
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, color: textColor),
+            icon: Icon(Icons.refresh, color: Colors.white),
             onPressed: _loadStatus,
             tooltip: 'Atualizar',
           ),
           IconButton(
-            icon: Icon(Icons.logout, color: textColor),
+            icon: Icon(Icons.logout, color: Colors.white),
             onPressed: () async {
               // Confirmar logout
               final confirm = await showDialog<bool>(
@@ -210,7 +220,7 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
                     ),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: buttonColor,
+                        backgroundColor: Color(0xFF8719CA), // Roxo do tema
                       ),
                       onPressed: () => Navigator.pop(context, true),
                       child: Text('Sair', style: TextStyle(color: Colors.white)),
@@ -239,7 +249,7 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: _loadStatus,
-        color: buttonColor,
+        color: Color(0xFF8719CA), // Roxo do tema
         child: SingleChildScrollView(
           physics: AlwaysScrollableScrollPhysics(),
           child: Column(
@@ -271,12 +281,41 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
           CircleAvatar(
             radius: 50,
             backgroundColor: Colors.white,
-            child: Text(
-              statusData!.driverName.isNotEmpty
-                  ? statusData!.driverName[0].toUpperCase()
-                  : 'M',
-              style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: buttonColor),
-            ),
+            child: _profileImagePath != null && _profileImagePath!.isNotEmpty
+                ? ClipOval(
+                    child: Image.network(
+                      _profileImagePath!,
+                      fit: BoxFit.cover,
+                      width: 100,
+                      height: 100,
+                      errorBuilder: (context, error, stackTrace) {
+                        // Se falhar ao carregar, mostra a letra
+                        return Text(
+                          statusData!.driverName.isNotEmpty
+                              ? statusData!.driverName[0].toUpperCase()
+                              : 'M',
+                          style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Color(0xFF8719CA)),
+                        );
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                : null,
+                            color: Color(0xFF8719CA),
+                          ),
+                        );
+                      },
+                    ),
+                  )
+                : Text(
+                    statusData!.driverName.isNotEmpty
+                        ? statusData!.driverName[0].toUpperCase()
+                        : 'M',
+                    style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Color(0xFF8719CA)), // Roxo do tema
+                  ),
           ),
           SizedBox(height: 16),
           Text(
@@ -466,7 +505,7 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
             icon: Icon(Icons.upload_file, color: Colors.white),
             label: Text('Enviar Documentos', style: TextStyle(fontSize: 16, color: Colors.white)),
             style: ElevatedButton.styleFrom(
-              backgroundColor: buttonColor,
+              backgroundColor: Color(0xFF8719CA), // Roxo do tema
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -518,9 +557,9 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
   List<Color> _getStatusGradient(String status) {
     switch (status) {
       case 'approved':
-        return [Colors.green[400]!, Colors.green[700]!];
+        return [Color(0xFF8719CA), Color(0xFF6A15A1)]; // Roxo do tema
       case 'under_review':
-        return [Colors.blue[400]!, Colors.blue[700]!];
+        return [Color(0xFF8719CA), Color(0xFF6A15A1)]; // Roxo do tema
       case 'rejected':
         return [Colors.red[400]!, Colors.red[700]!];
       default:
@@ -531,9 +570,9 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
   Color _getStepColor(String status) {
     switch (status) {
       case 'completed':
-        return Colors.green;
+        return Color(0xFF8719CA); // Roxo do tema
       case 'in_progress':
-        return Colors.blue;
+        return Color(0xFF8719CA); // Roxo do tema
       case 'rejected':
         return Colors.red;
       default:

@@ -9,6 +9,7 @@ import 'package:workmanager/workmanager.dart';
 import 'functions/functions.dart';
 import 'functions/notifications.dart';
 import 'pages/splash_screen.dart';
+import 'pages/auth/login_screen_new.dart';
 import 'package:firebase_core/firebase_core.dart';
 // import 'package:bubble_head/bubble.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -230,6 +231,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             title: 'product name',
             theme: ThemeData(),
             home: const SplashScreen(),
+            routes: {
+              '/login': (context) => const LoginScreenNew(),
+            },
             builder: (context, child) {
               return MediaQuery(
                 data: MediaQuery.of(context)

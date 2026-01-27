@@ -6,12 +6,14 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/online_offline_toggle.dart';
 import '../styles/styles.dart';
+import '../styles/app_colors.dart';
 import '../functions/functions.dart';
 import '../services/local_storage_service.dart';
 import '../services/delivery_service.dart';
 import '../services/driver_block_service.dart';
 import '../services/location_permission_service.dart';
 import 'driver_profile_screen.dart';
+import 'profile_details_screen.dart';
 import 'active_delivery_screen.dart';
 import 'delivery_with_stops_screen.dart';
 import '../models/delivery.dart';
@@ -26,7 +28,7 @@ import 'NavigatorPages/entregas_ativas.dart';
 import 'NavigatorPages/minhas_rotas.dart';
 import 'NavigatorPages/minhas_viagens.dart';
 import 'NavigatorPages/carteira_page.dart';
-import 'login/login.dart';
+import 'auth/login_screen_new.dart';
 
 class HomeSimple extends StatefulWidget {
   const HomeSimple({super.key});
@@ -47,6 +49,8 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
   List<Map<String, dynamic>> _availableDeliveries = [];
   bool _isLoadingAvailableDeliveries = false;
   List<Map<String, dynamic>> _activeDeliveries = []; // NOVO: lista de entregas ativas
+  Map<String, dynamic>? _balanceData; // NOVO: dados da carteira
+  bool _isLoadingBalance = false; // NOVO: loading da carteira
 
   @override
   void initState() {
@@ -56,6 +60,7 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
     _loadCurrentDelivery();
     _loadCommissionStats();
     _loadAvailableDeliveries();
+    _loadWalletBalance(); // NOVO: carregar saldo da carteira
     _startLocationUpdates();
     _startBlockStatusCheck();
   }
@@ -141,6 +146,8 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
   }
 
   Future<void> _loadDriverProfile() async {
+    debugPrint('🚀 INICIANDO _loadDriverProfile()');
+
     setState(() {
       _isLoadingProfile = true;
     });
@@ -148,31 +155,77 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
     try {
       debugPrint('👤 Buscando perfil do motorista...');
 
+      // Primeiro tentar carregar do LocalStorageService
+      debugPrint('📂 Tentando carregar do LocalStorageService...');
+      final cachedData = await LocalStorageService.getDriverData();
+      debugPrint('📂 CachedData resultado: ${cachedData != null ? "ENCONTRADO" : "NULL"}');
+
+      if (cachedData != null) {
+        debugPrint('✅ Perfil carregado do cache local');
+        debugPrint('📋 Dados completos do cache: $cachedData');
+        setState(() {
+          _driverProfile = cachedData;
+        });
+        debugPrint('👤 personalData do cache: ${_driverProfile?['personalData']}');
+        debugPrint('👤 fullName do cache: ${_driverProfile?['personalData']?['fullName']}');
+      } else {
+        debugPrint('⚠️ Nenhum dado encontrado no cache local');
+      }
+
+      // Tentar atualizar da API
       final token = await LocalStorageService.getAccessToken();
       if (token == null) {
         debugPrint('❌ Token não encontrado');
+        setState(() {
+          _isLoadingProfile = false;
+        });
         return;
       }
 
       final response = await http.get(
-        Uri.parse('${url}api/v1/driver/me'),
+        Uri.parse('${url}api/auth/me'),
         headers: {
           'Authorization': 'Bearer $token',
         },
       );
 
-      debugPrint('📥 Status Code: ${response.statusCode}');
+      debugPrint('📥 Status Code da API: ${response.statusCode}');
+      debugPrint('📥 Corpo da resposta: ${response.body}');
 
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(response.body);
+        debugPrint('📦 JSON parseado: $jsonResponse');
+        debugPrint('📦 success: ${jsonResponse['success']}');
+        debugPrint('📦 data: ${jsonResponse['data']}');
+
         if (jsonResponse['success'] == true) {
           setState(() {
             _driverProfile = jsonResponse['data'];
           });
-          debugPrint('✅ Perfil carregado com sucesso');
+          debugPrint('✅ Perfil atualizado da API');
+          debugPrint('📋 Dados do perfil: ${jsonEncode(_driverProfile)}');
+          debugPrint('👤 personalData: ${_driverProfile?['personalData']}');
+          debugPrint('👤 fullName: ${_driverProfile?['personalData']?['fullName']}');
+
+          // Salvar no cache local
+          if (_driverProfile != null) {
+            final token = await LocalStorageService.getAccessToken();
+            final driverId = await LocalStorageService.getDriverId();
+            if (token != null && driverId != null) {
+              await LocalStorageService.saveDriverSession(
+                driverId: driverId,
+                accessToken: token,
+                driverData: _driverProfile!,
+              );
+              debugPrint('💾 Perfil atualizado no cache local');
+            }
+          }
+        } else {
+          debugPrint('⚠️ API retornou success = false');
         }
       } else {
-        debugPrint('❌ Erro ao carregar perfil: ${response.statusCode}');
+        debugPrint('❌ Erro ao carregar perfil da API: ${response.statusCode}');
+        debugPrint('❌ Corpo do erro: ${response.body}');
       }
     } catch (e) {
       debugPrint('❌ Erro ao buscar perfil: $e');
@@ -221,6 +274,41 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
     }
   }
 
+  // NOVO: Carregar saldo da carteira
+  Future<void> _loadWalletBalance() async {
+    setState(() {
+      _isLoadingBalance = true;
+    });
+
+    try {
+      debugPrint('💰 Buscando saldo da carteira...');
+      final balanceResponse = await getDriverBalance();
+
+      if (mounted) {
+        setState(() {
+          // A API retorna { success: true, data: { ... } }
+          if (balanceResponse != null && balanceResponse['success'] == true) {
+            _balanceData = balanceResponse['data'] as Map<String, dynamic>?;
+          } else {
+            _balanceData = balanceResponse;
+          }
+          _isLoadingBalance = false;
+        });
+
+        if (_balanceData != null) {
+          debugPrint('✅ Saldo carregado: ${_balanceData!['saldoDisponivel']}');
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao carregar saldo: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingBalance = false;
+        });
+      }
+    }
+  }
+
   Future<void> _loadCommissionStats() async {
     setState(() {
       _isLoadingStats = true;
@@ -233,6 +321,11 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
       debugPrint('🔍 Stats recebidas: $stats');
       debugPrint('🔍 Stats tipo: ${stats.runtimeType}');
       debugPrint('🔍 Stats keys: ${stats?.keys}');
+      if (stats != null) {
+        debugPrint('🔍 commissionRate: ${stats['commissionRate']}');
+        debugPrint('🔍 deliveriesNeededForNextTier: ${stats['deliveriesNeededForNextTier']}');
+        debugPrint('🔍 nextTierRate: ${stats['nextTierRate']}');
+      }
 
       if (mounted) {
         setState(() {
@@ -320,18 +413,134 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
     debugPrint('🔧 BUILD - _commissionStats: $_commissionStats');
     debugPrint('🔧 BUILD - _currentDelivery: $_currentDelivery');
 
+    // Extrair primeiro nome do perfil
+    String firstName = 'Motorista';
+    if (_driverProfile != null) {
+      // Tentar diferentes estruturas de dados
+      String? fullName;
+
+      // Estrutura nova: personalData.fullName
+      if (_driverProfile!['personalData']?['fullName'] != null) {
+        fullName = _driverProfile!['personalData']['fullName'].toString();
+      }
+      // Estrutura antiga: name diretamente
+      else if (_driverProfile!['name'] != null) {
+        fullName = _driverProfile!['name'].toString();
+      }
+
+      if (fullName != null && fullName.isNotEmpty) {
+        firstName = fullName.trim().split(' ').first;
+        debugPrint('👤 Nome completo: $fullName');
+        debugPrint('👤 Primeiro nome extraído: $firstName');
+      } else {
+        debugPrint('⚠️ Nome não encontrado no perfil');
+      }
+    } else {
+      debugPrint('⚠️ Perfil do motorista não carregado');
+    }
+
     return Scaffold(
-      backgroundColor: page,
-      appBar: AppBar(
-        backgroundColor: buttonColor,
-        title: const Text('Home', style: TextStyle(color: Colors.white)),
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
-        elevation: 2,
+      backgroundColor: Colors.white,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(180),
+        child: AppBar(
+          backgroundColor: AppColors.primary,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          flexibleSpace: SafeArea(
+            child: Container(
+              height: 180,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Coluna esquerda: Menu + Nome
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Builder(
+                          builder: (context) => IconButton(
+                            icon: const Icon(Icons.menu, color: Colors.white, size: 30),
+                            onPressed: () => Scaffold.of(context).openDrawer(),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          'Oi, $firstName',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Bem-vindo de volta',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Coluna direita: Sino + Toggle
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Ícone de notificação com badge
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 28),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const NotificationPage(),
+                                ),
+                              );
+                            },
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                          // Badge laranja
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFF9800),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: AppColors.primary, width: 1.5),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      // Toggle Ativo/Inativo (label já está dentro do widget)
+                      const OnlineOfflineToggle(),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
       drawer: Drawer(
         child: Container(
-          color: page,
+          color: Colors.white,
           child: Column(
             children: [
               // Header do drawer com perfil
@@ -343,9 +552,9 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                   left: 20,
                   right: 20,
                 ),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [buttonColor, buttonColor.withOpacity(0.7)],
+                    colors: [AppColors.primary, Color(0xFF6A0DAD)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -527,20 +736,20 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
+                              const Row(
                                 children: [
                                   Icon(
                                     Icons.directions_car,
-                                    color: buttonColor,
+                                    color: AppColors.primary,
                                     size: 24,
                                   ),
-                                  const SizedBox(width: 10),
+                                  SizedBox(width: 10),
                                   Text(
                                     'Meu Veículo',
                                     style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
-                                      color: textColor,
+                                      color: AppColors.textPrimary,
                                     ),
                                   ),
                                 ],
@@ -649,10 +858,10 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                       const SizedBox(height: 20),
                       // Itens do menu
                       ListTile(
-                        leading: Icon(Icons.person, color: buttonColor),
-                        title: Text(
+                        leading: const Icon(Icons.person, color: AppColors.primary),
+                        title: const Text(
                           'Meu Perfil',
-                          style: TextStyle(color: textColor, fontSize: 16),
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
                         ),
                         onTap: () {
                           Navigator.pop(context);
@@ -664,12 +873,12 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                           );
                         },
                       ),
-                      Divider(height: 1, color: borderLines),
+                      const Divider(height: 1, color: Color(0xFFE0E0E0)),
                       ListTile(
-                        leading: Icon(Icons.account_balance_wallet, color: buttonColor),
-                        title: Text(
+                        leading: const Icon(Icons.account_balance_wallet, color: AppColors.primary),
+                        title: const Text(
                           'Carteira',
-                          style: TextStyle(color: textColor, fontSize: 16),
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
                         ),
                         onTap: () {
                           Navigator.pop(context);
@@ -683,10 +892,10 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                       ),
                       Divider(height: 1, color: borderLines),
                       ListTile(
-                        leading: Icon(Icons.local_shipping_outlined, color: buttonColor),
-                        title: Text(
+                        leading: const Icon(Icons.local_shipping_outlined, color: AppColors.primary),
+                        title: const Text(
                           'Minhas Entregas',
-                          style: TextStyle(color: textColor, fontSize: 16),
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
                         ),
                         onTap: () {
                           Navigator.pop(context);
@@ -700,19 +909,19 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                       ),
                       Divider(height: 1, color: borderLines),
                       ExpansionTile(
-                        leading: Icon(Icons.route, color: buttonColor),
-                        title: Text(
+                        leading: const Icon(Icons.route, color: AppColors.primary),
+                        title: const Text(
                           'Rotas',
-                          style: TextStyle(color: textColor, fontSize: 16),
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
                         ),
-                        iconColor: buttonColor,
-                        collapsedIconColor: buttonColor,
+                        iconColor: AppColors.primary,
+                        collapsedIconColor: AppColors.primary,
                         children: [
                           ListTile(
-                            leading: SizedBox(width: 40),
-                            title: Text(
+                            leading: const SizedBox(width: 40),
+                            title: const Text(
                               'Minhas Rotas',
-                              style: TextStyle(color: textColor, fontSize: 15),
+                              style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
                             ),
                             onTap: () {
                               Navigator.pop(context);
@@ -726,9 +935,9 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                           ),
                           ListTile(
                             leading: SizedBox(width: 40),
-                            title: Text(
+                            title: const Text(
                               'Minhas Viagens',
-                              style: TextStyle(color: textColor, fontSize: 15),
+                              style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
                             ),
                             onTap: () {
                               Navigator.pop(context);
@@ -744,10 +953,10 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                       ),
                       Divider(height: 1, color: borderLines),
                       ListTile(
-                        leading: Icon(Icons.history, color: buttonColor),
-                        title: Text(
+                        leading: const Icon(Icons.history, color: AppColors.primary),
+                        title: const Text(
                           'Histórico',
-                          style: TextStyle(color: textColor, fontSize: 16),
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
                         ),
                         onTap: () {
                           Navigator.pop(context);
@@ -761,10 +970,10 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                       ),
                       Divider(height: 1, color: borderLines),
                       ListTile(
-                        leading: Icon(Icons.notifications_outlined, color: buttonColor),
-                        title: Text(
+                        leading: const Icon(Icons.notifications_outlined, color: AppColors.primary),
+                        title: const Text(
                           'Notificações',
-                          style: TextStyle(color: textColor, fontSize: 16),
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
                         ),
                         onTap: () {
                           Navigator.pop(context);
@@ -778,19 +987,19 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                       ),
                       Divider(height: 1, color: borderLines),
                       ExpansionTile(
-                        leading: Icon(Icons.people_alt_outlined, color: buttonColor),
-                        title: Text(
+                        leading: const Icon(Icons.people_alt_outlined, color: AppColors.primary),
+                        title: const Text(
                           'Indicação',
-                          style: TextStyle(color: textColor, fontSize: 16),
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
                         ),
-                        iconColor: buttonColor,
-                        collapsedIconColor: buttonColor,
+                        iconColor: AppColors.primary,
+                        collapsedIconColor: AppColors.primary,
                         children: [
                           ListTile(
                             leading: SizedBox(width: 40),
-                            title: Text(
+                            title: const Text(
                               'Entregadores',
-                              style: TextStyle(color: textColor, fontSize: 15),
+                              style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
                             ),
                             onTap: () {
                               Navigator.pop(context);
@@ -804,9 +1013,9 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                           ),
                           ListTile(
                             leading: SizedBox(width: 40),
-                            title: Text(
+                            title: const Text(
                               'Empresas',
-                              style: TextStyle(color: textColor, fontSize: 15),
+                              style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
                             ),
                             onTap: () {
                               Navigator.pop(context);
@@ -822,10 +1031,10 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                       ),
                       Divider(height: 1, color: borderLines),
                       ListTile(
-                        leading: Icon(Icons.card_giftcard, color: buttonColor),
-                        title: Text(
+                        leading: const Icon(Icons.card_giftcard, color: AppColors.primary),
+                        title: const Text(
                           'Promoções',
-                          style: TextStyle(color: textColor, fontSize: 16),
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
                         ),
                         onTap: () {
                           Navigator.pop(context);
@@ -839,10 +1048,10 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                       ),
                       Divider(height: 1, color: borderLines),
                       ListTile(
-                        leading: Icon(Icons.settings, color: buttonColor),
-                        title: Text(
+                        leading: const Icon(Icons.settings, color: AppColors.primary),
+                        title: const Text(
                           'Configurações',
-                          style: TextStyle(color: textColor, fontSize: 16),
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
                         ),
                         onTap: () {
                           Navigator.pop(context);
@@ -851,10 +1060,10 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                       ),
                       Divider(height: 1, color: borderLines),
                       ListTile(
-                        leading: Icon(Icons.help_outline, color: buttonColor),
-                        title: Text(
+                        leading: const Icon(Icons.help_outline, color: AppColors.primary),
+                        title: const Text(
                           'FAQ',
-                          style: TextStyle(color: textColor, fontSize: 16),
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
                         ),
                         onTap: () {
                           Navigator.pop(context);
@@ -866,10 +1075,10 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                       ),
                       Divider(height: 1, color: borderLines),
                       ListTile(
-                        leading: Icon(Icons.confirmation_number_outlined, color: buttonColor),
-                        title: Text(
+                        leading: const Icon(Icons.confirmation_number_outlined, color: AppColors.primary),
+                        title: const Text(
                           'Meus Tickets',
-                          style: TextStyle(color: textColor, fontSize: 16),
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
                         ),
                         onTap: () {
                           Navigator.pop(context);
@@ -914,7 +1123,7 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                               // Navegar para tela de login removendo todas as rotas anteriores
                               Navigator.pushAndRemoveUntil(
                                 context,
-                                MaterialPageRoute(builder: (context) => const Login()),
+                                MaterialPageRoute(builder: (context) => const LoginScreenNew()),
                                 (route) => false,
                               );
                               debugPrint('✅ Navegação concluída');
@@ -935,7 +1144,7 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
       ),
       body: RefreshIndicator(
         onRefresh: _refreshData,
-        color: buttonColor,
+        color: AppColors.primary,
         child: LayoutBuilder(
           builder: (context, constraints) {
             return SingleChildScrollView(
@@ -948,83 +1157,44 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                   children: [
                     const SizedBox(height: 20),
 
-                    // Indicador de entregas ativas (suporta múltiplas entregas)
-                    if (_activeDeliveries.isNotEmpty) ...[
-                      // Banner informativo quando há múltiplas entregas
-                      if (_activeDeliveries.length > 1) ...[
-                        _buildMultipleDeliveriesBanner(_activeDeliveries.length),
-                        const SizedBox(height: 16),
-                      ],
+                    // Card de Saldo (Balance Card) - Novo design do Figma
+                    _buildBalanceCard(),
+                    const SizedBox(height: 16),
 
-                      // Listar todos os cards de entregas ativas
-                      ..._activeDeliveries.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final delivery = entry.value;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: _buildActiveDeliveryCard(delivery, index + 1),
-                        );
-                      }),
-                      const SizedBox(height: 4),
-                    ],
-
-                    // Cards informativos de estatísticas
+                    // Cards informativos de estatísticas (Novo design do Figma)
                     if (_commissionStats != null)
                       _buildStatisticsCards(),
 
                     if (_commissionStats != null)
                       const SizedBox(height: 20),
 
-                    // Toggle Online/Offline
-                    const Center(
-                      child: OnlineOfflineToggle(),
-                    ),
-                    const SizedBox(height: 30),
-
-                    // Lista de entregas disponíveis
-                    if (_availableDeliveries.isNotEmpty) ...[
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          children: [
-                            Icon(Icons.local_shipping, color: buttonColor, size: 24),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Entregas Disponíveis (${_availableDeliveries.length})',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: textColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      ..._availableDeliveries.map((delivery) => _buildDeliveryCard(delivery)),
-                      const SizedBox(height: 20),
-                    ],
-
-                    // Loading de entregas disponíveis
-                    if (_isLoadingAvailableDeliveries)
+                    // Seção "Entrega em andamento agora"
+                    if (_activeDeliveries.isNotEmpty) ...[
                       const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 20),
-                        child: CircularProgressIndicator(),
-                      ),
-
-                    // Texto informativo
-                    if (_availableDeliveries.isEmpty && !_isLoadingAvailableDeliveries)
-                      Center(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
-                          'Arraste para baixo para atualizar\n\nUse o toggle acima para ficar\nOnline ou Offline\n\nNenhuma entrega disponível no momento',
-                          textAlign: TextAlign.center,
+                          'Entrega em andamento agora',
                           style: TextStyle(
-                            color: textColor,
                             fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                       ),
-                    const SizedBox(height: 40),
+                      const SizedBox(height: 12),
+
+                      // Listar todos os cards de entregas ativas
+                      ..._activeDeliveries.asMap().entries.map((entry) {
+                        final delivery = entry.value;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _buildActiveDeliveryCardFigma(delivery),
+                        );
+                      }),
+                      const SizedBox(height: 20),
+                    ],
+
+                    const SizedBox(height: 100), // Espaço para o bottom navigation
                   ],
                 ),
               ),
@@ -1032,6 +1202,7 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
           },
         ),
       ),
+      bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
@@ -1125,15 +1296,15 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [buttonColor, buttonColor.withOpacity(0.8)],
+        gradient: const LinearGradient(
+          colors: [AppColors.primary, Color(0xFF6A0DAD)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: buttonColor.withOpacity(0.3),
+            color: AppColors.primary.withOpacity(0.3),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1398,15 +1569,15 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [buttonColor, buttonColor.withOpacity(0.8)],
+        gradient: const LinearGradient(
+          colors: [AppColors.primary, Color(0xFF6A0DAD)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: buttonColor.withOpacity(0.3),
+            color: AppColors.primary.withOpacity(0.3),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1551,17 +1722,17 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
         children: [
           Text(
             '$label:',
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 14,
-              color: textColor.withOpacity(0.7),
+              color: AppColors.textSecondary,
             ),
           ),
           Text(
             value,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: textColor,
+              color: AppColors.textPrimary,
             ),
           ),
         ],
@@ -1604,25 +1775,25 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                 Expanded(
                   child: Text(
                     companyName,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: textColor,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: buttonColor.withOpacity(0.1),
+                    color: AppColors.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     '#$requestNumber',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: buttonColor,
+                      color: AppColors.primary,
                     ),
                   ),
                 ),
@@ -1634,14 +1805,14 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.store, color: Colors.blue, size: 20),
+                const Icon(Icons.store, color: Colors.blue, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     pickupAddress,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14,
-                      color: textColor,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ),
@@ -1650,8 +1821,8 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
             const SizedBox(height: 8),
 
             // Ícone de seta
-            Padding(
-              padding: const EdgeInsets.only(left: 6),
+            const Padding(
+              padding: EdgeInsets.only(left: 6),
               child: Icon(Icons.arrow_downward, color: Colors.grey, size: 16),
             ),
             const SizedBox(height: 8),
@@ -1660,14 +1831,14 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.location_on, color: Colors.red, size: 20),
+                const Icon(Icons.location_on, color: Colors.red, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     dropAddress,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14,
-                      color: textColor,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ),
@@ -1686,9 +1857,9 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                     const SizedBox(width: 4),
                     Text(
                       '$distance km',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 14,
-                        color: textColor,
+                        color: AppColors.textPrimary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -1751,62 +1922,458 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
     );
   }
 
+  // Card de Entrega Ativa - Estilo Figma
+  Widget _buildActiveDeliveryCardFigma(Map<String, dynamic> delivery) {
+    final String companyName = delivery['companyName'] ?? 'Empresa';
+    final String requestNumber = delivery['requestNumber'] ?? 'N/A';
+    final String pickupAddress = delivery['pickupAddress'] ?? 'Endereço de coleta';
+    final String deliveryAddress = delivery['deliveryAddress'] ?? 'Endereço de entrega';
+    final bool isTripStart = delivery['isTripStart'] == true;
+
+    // Determinar status e cor
+    String statusText = isTripStart ? 'Entrega' : 'Coleta';
+    Color statusColor = isTripStart ? Colors.green : Colors.orange;
+
+    return GestureDetector(
+      onTap: () async {
+        // Verificar se é uma entrega com múltiplas paradas já retirada
+        final deliveryAddressStr = delivery['deliveryAddress'] ?? '';
+        final hasMultipleStops = deliveryAddressStr.toString().contains(' | ');
+
+        // Se já foi retirada e tem múltiplas paradas, ir direto para a tela de stops
+        if (isTripStart && hasMultipleStops) {
+          final stopsCount = deliveryAddressStr.toString().split(' | ').length;
+          final deliveryObj = Delivery(
+            requestId: delivery['requestId']?.toString() ?? '',
+            requestNumber: delivery['requestNumber']?.toString() ?? '',
+            companyName: delivery['companyName'],
+            companyPhone: delivery['companyPhone'],
+            customerName: delivery['customerName'],
+            customerWhatsapp: delivery['customerWhatsapp'],
+            deliveryReference: delivery['deliveryReference'],
+            pickupAddress: delivery['pickupAddress'],
+            pickupLat: delivery['pickupLat'] != null ? double.tryParse(delivery['pickupLat'].toString()) : null,
+            pickupLng: delivery['pickupLng'] != null ? double.tryParse(delivery['pickupLng'].toString()) : null,
+            deliveryAddress: deliveryAddressStr.toString(),
+            deliveryLat: delivery['deliveryLat'] != null ? double.tryParse(delivery['deliveryLat'].toString()) : null,
+            deliveryLng: delivery['deliveryLng'] != null ? double.tryParse(delivery['deliveryLng'].toString()) : null,
+            distance: delivery['distance']?.toString(),
+            estimatedTime: delivery['estimatedTime']?.toString(),
+            driverAmount: delivery['driverAmount']?.toString(),
+            isTripStart: true,
+            needsReturn: delivery['needsReturn'] ?? false,
+            hasMultipleStops: true,
+            stopsCount: stopsCount,
+          );
+
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DeliveryWithStopsScreen(delivery: deliveryObj),
+            ),
+          );
+
+          if (result != null || mounted) {
+            _loadCurrentDelivery();
+          }
+        } else {
+          // Ir para tela normal de entrega ativa
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ActiveDeliveryScreen(
+                delivery: delivery,
+              ),
+            ),
+          );
+          if (result != null || mounted) {
+            _loadCurrentDelivery();
+          }
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header: Nome da empresa + Status
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    companyName,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    statusText,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Pedido #$requestNumber',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Endereço de retirada
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.location_on,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isTripStart ? deliveryAddress : pickupAddress,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_forward_ios,
+                  color: AppColors.primary,
+                  size: 16,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Card de Saldo - Novo design do Figma
+  Widget _buildBalanceCard() {
+    // Obter saldo disponível para saque
+    final saque = _balanceData?['saque'];
+    final double valorDisponivelParaSaque = (saque?['valorDisponivelParaSaque'] ?? 0).toDouble();
+
+    // Obter dados de comissão (corrigir nomes das chaves da API)
+    final double commissionRate = (_commissionStats?['currentCommissionPercentage'] ?? 18).toDouble();
+    final nextTier = _commissionStats?['nextTier'] as Map<String, dynamic>?;
+    final int deliveriesNeeded = nextTier?['deliveriesNeeded'] ?? 0;
+    final double nextTierRate = (nextTier?['commissionPercentage'] ?? 0).toDouble();
+
+    // Debug: Verificar dados de comissão
+    debugPrint('💰 Dados de comissão:');
+    debugPrint('   - currentCommissionPercentage: $commissionRate');
+    debugPrint('   - nextTier.deliveriesNeeded: $deliveriesNeeded');
+    debugPrint('   - nextTier.commissionPercentage: $nextTierRate');
+    debugPrint('   - _commissionStats completo: $_commissionStats');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFD4F1E8), Color(0xFFB8E6D5)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  // Ícone da carteira
+                  const Icon(
+                    Icons.account_balance_wallet,
+                    color: Color(0xFF2E7D32),
+                    size: 32,
+                  ),
+                  const SizedBox(width: 16),
+                  // Texto
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Disponível',
+                          style: TextStyle(
+                            color: Color(0xFF424242),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        _isLoadingBalance
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Color(0xFF2E7D32),
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(
+                                'R\$ ${valorDisponivelParaSaque.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  color: Color(0xFF1B5E20),
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: -0.5,
+                                ),
+                              ),
+                      ],
+                    ),
+                  ),
+                  // Tag de comissão
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Comissão',
+                        style: TextStyle(
+                          color: Color(0xFF424242),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${commissionRate.toStringAsFixed(0)}%',
+                        style: const TextStyle(
+                          color: Color(0xFF1B5E20),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              // Texto sobre entregas necessárias para próximo nível
+              if (_commissionStats != null && deliveriesNeeded > 0 && nextTierRate > 0) ...[
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    const Icon(
+                      Icons.star_border,
+                      size: 14,
+                      color: Color(0xFF4CAF50),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Faltam $deliveriesNeeded ${deliveriesNeeded == 1 ? 'entrega' : 'entregas'} para ${nextTierRate.toStringAsFixed(0)}%',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Color(0xFF2E7D32),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildStatisticsCards() {
     final int currentMonthDeliveries = _commissionStats?['currentMonthDeliveries'] ?? 0;
     final int currentWeekDeliveries = _commissionStats?['currentWeekDeliveries'] ?? 0;
-    final double currentCommission = (_commissionStats?['currentCommissionPercentage'] ?? 0.0).toDouble();
-    final Map<String, dynamic>? nextTier = _commissionStats?['nextTier'];
+
+    debugPrint('📊 Estatísticas - Mês: $currentMonthDeliveries, Semana: $currentWeekDeliveries');
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
+      child: Row(
         children: [
-          // Primeira linha - Entregas da semana e do mês
+          // Card de entregas da semana
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF3E0),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.local_shipping,
+                    color: Colors.orange,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Entregas essa\nsemana',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '$currentWeekDeliveries',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Card de entregas do mês
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8EAF6),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.calendar_month,
+                    color: Colors.indigo,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Entregas esse\nmês',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '$currentMonthDeliveries',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Seção de Entregas - Novo design do Figma
+  Widget _buildDeliverySections() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Entregas',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 16),
           Row(
             children: [
-              // Card de entregas da semana
+              // Card de Coleta
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.purple.shade400, Colors.purple.shade600],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: const Color(0xFFFFF3E0),
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.purple.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    border: Border.all(
+                      color: Colors.orange.withOpacity(0.3),
+                      width: 1,
+                    ),
                   ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
-                        Icons.calendar_today,
-                        color: Colors.white,
-                        size: 28,
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade100,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.shopping_bag_outlined,
+                          color: Colors.orange,
+                          size: 28,
+                        ),
                       ),
                       const SizedBox(height: 12),
-                      Text(
-                        '$currentWeekDeliveries',
-                        style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                      const Text(
+                        'Coleta',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Text(
-                        'Entregas\nesta semana',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.white,
-                          height: 1.2,
+                      Text(
+                        '${_activeDeliveries.where((d) => d['isTripStart'] == false).length}',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange,
                         ),
                       ),
                     ],
@@ -1814,49 +2381,48 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                 ),
               ),
               const SizedBox(width: 12),
-              // Card de entregas do mês
+              // Card de Entregas
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.blue.shade400, Colors.blue.shade600],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: const Color(0xFFE8F5E9),
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blue.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    border: Border.all(
+                      color: Colors.green.withOpacity(0.3),
+                      width: 1,
+                    ),
                   ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
-                        Icons.local_shipping,
-                        color: Colors.white,
-                        size: 28,
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade100,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.local_shipping_outlined,
+                          color: Colors.green,
+                          size: 28,
+                        ),
                       ),
                       const SizedBox(height: 12),
-                      Text(
-                        '$currentMonthDeliveries',
-                        style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                      const Text(
+                        'Entregas',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Text(
-                        'Entregas\neste mês',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.white,
-                          height: 1.2,
+                      Text(
+                        '${_activeDeliveries.where((d) => d['isTripStart'] == true).length}',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
                         ),
                       ),
                     ],
@@ -1865,92 +2431,120 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          // Segunda linha - Card de comissão
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.green.shade400, Colors.green.shade600],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.green.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.attach_money,
-                  color: Colors.white,
-                  size: 32,
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${currentCommission.toStringAsFixed(0)}%',
-                        style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        nextTier != null
-                            ? 'Comissão atual'
-                            : 'Comissão máxima!',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (nextTier != null) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          'Faltam ${nextTier['deliveriesNeeded']}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          'para ${nextTier['commissionPercentage'].toStringAsFixed(0)}%',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
+        ],
+      ),
+    );
+  }
+
+  // Bottom Navigation Bar - Novo design do Figma
+  Widget _buildBottomNavigationBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
           ),
         ],
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavBarItem(Icons.home_outlined, 'Início', true),
+              _buildNavBarItem(Icons.account_balance_wallet_outlined, 'Carteira', false),
+              // Centro - Botão de entregas destacado
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.primary, Color(0xFF6A0DAD)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.inventory_2_outlined, color: Colors.white, size: 28),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const EntregasAtivasScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              _buildNavBarItem(Icons.notifications_outlined, 'Notificações', false),
+              _buildNavBarItem(Icons.person_outline, 'Perfil', false),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavBarItem(IconData icon, String label, bool isActive) {
+    return InkWell(
+      onTap: () {
+        if (label == 'Carteira') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const CarteiraPage(),
+            ),
+          );
+        } else if (label == 'Notificações') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const NotificationPage(),
+            ),
+          );
+        } else if (label == 'Perfil') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ProfileDetailsScreen(),
+            ),
+          );
+        }
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isActive ? AppColors.primary : AppColors.textSecondary,
+              size: 24,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: isActive ? AppColors.primary : AppColors.textSecondary,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

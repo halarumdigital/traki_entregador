@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../functions/functions.dart';
-import '../../styles/styles.dart';
+import '../../styles/app_colors.dart';
+import '../../components/buttons/primary_button.dart';
 import '../../services/local_storage_service.dart';
 
 class DocumentUploadScreen extends StatefulWidget {
@@ -21,9 +21,9 @@ class DocumentUploadScreen extends StatefulWidget {
 class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
   final ImagePicker _picker = ImagePicker();
 
-  bool _isLoading = false;
+  bool _isLoadingDocumentTypes = false;
   String _error = '';
-  String _loadingMessage = '';
+  String _uploadingDocumentId = ''; // ID do documento que está sendo enviado
 
   List<dynamic> _documentTypes = [];
   final Map<String, File?> _selectedFiles = {}; // documentTypeId -> File
@@ -38,8 +38,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
 
   Future<void> _loadDocumentTypes() async {
     setState(() {
-      _isLoading = true;
-      _loadingMessage = 'Carregando documentos...';
+      _isLoadingDocumentTypes = true;
     });
 
     try {
@@ -53,19 +52,19 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
         await _loadDriverDocumentStatus();
 
         setState(() {
-          _isLoading = false;
+          _isLoadingDocumentTypes = false;
         });
         debugPrint('✅ ${_documentTypes.length} tipos de documentos carregados');
       } else {
         setState(() {
           _error = 'Erro ao carregar documentos obrigatórios';
-          _isLoading = false;
+          _isLoadingDocumentTypes = false;
         });
       }
     } catch (e) {
       setState(() {
         _error = 'Erro: $e';
-        _isLoading = false;
+        _isLoadingDocumentTypes = false;
       });
     }
   }
@@ -163,8 +162,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     if (file == null) return;
 
     setState(() {
-      _isLoading = true;
-      _loadingMessage = 'Enviando $documentName...';
+      _uploadingDocumentId = documentTypeId;
     });
 
     try {
@@ -183,7 +181,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
 
         // Atualizar status do documento para "pending" (aguardando análise)
         setState(() {
-          _isLoading = false;
+          _uploadingDocumentId = '';
           _documentStatus[documentTypeId] = {
             'status': 'pending',
             'uploaded': true,
@@ -230,7 +228,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('✅ $documentName enviado! Continue enviando os demais documentos.'),
-                backgroundColor: Colors.green,
+                backgroundColor: AppColors.primary,
                 duration: Duration(seconds: 2),
               ),
             );
@@ -238,7 +236,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
         }
       } else {
         setState(() {
-          _isLoading = false;
+          _uploadingDocumentId = '';
         });
 
         String errorMsg = result is Map ? (result['message'] ?? 'Erro ao enviar documento') : 'Erro desconhecido';
@@ -256,7 +254,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     } catch (e) {
       debugPrint('❌ Erro ao enviar documento: $e');
       setState(() {
-        _isLoading = false;
+        _uploadingDocumentId = '';
       });
 
       if (mounted) {
@@ -277,7 +275,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.check_circle, color: Colors.green, size: 32),
+            Icon(Icons.check_circle, color: AppColors.primary, size: 32),
             SizedBox(width: 8),
             Text('Documentos Enviados!'),
           ],
@@ -286,18 +284,14 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
           'Todos os documentos obrigatórios foram enviados com sucesso! '
           'Aguarde a aprovação do administrador. Você receberá uma notificação '
           'quando sua conta for aprovada.',
-          style: GoogleFonts.notoSans(),
         ),
         actions: [
-          ElevatedButton(
+          PrimaryButton(
+            text: 'OK',
             onPressed: () {
               Navigator.of(context).pop(); // Fechar dialog
               Navigator.of(context).pop(); // Voltar para tela de status
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: buttonColor,
-            ),
-            child: Text('OK', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -328,7 +322,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
   }
 
   Color _getDocumentStatusColor(String documentTypeId) {
-    if (_isDocumentApproved(documentTypeId)) return Colors.green;
+    if (_isDocumentApproved(documentTypeId)) return AppColors.primary;
     if (_isDocumentRejected(documentTypeId)) return Colors.red;
     if (_isDocumentPending(documentTypeId)) return Colors.orange;
     return Colors.grey;
@@ -336,33 +330,22 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Scaffold(
-        backgroundColor: page,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: buttonColor),
-              SizedBox(height: 16),
-              Text(
-                _loadingMessage,
-                style: GoogleFonts.notoSans(fontSize: 16, color: textColor),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
     if (_error.isNotEmpty && _documentTypes.isEmpty) {
       return Scaffold(
-        backgroundColor: page,
+        backgroundColor: Colors.white,
         appBar: AppBar(
-          backgroundColor: topBar,
-          title: Text('Enviar Documentos', style: TextStyle(color: textColor)),
-          iconTheme: IconThemeData(color: textColor),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          title: Text(
+            'Enviar Documentos',
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          iconTheme: IconThemeData(color: Colors.black),
+          centerTitle: true,
         ),
         body: Center(
           child: Padding(
@@ -374,17 +357,13 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                 SizedBox(height: 16),
                 Text(
                   _error,
-                  style: GoogleFonts.notoSans(fontSize: 16, color: textColor),
+                  style: TextStyle(fontSize: 16, color: Colors.black87),
                   textAlign: TextAlign.center,
                 ),
                 SizedBox(height: 24),
-                ElevatedButton.icon(
+                PrimaryButton(
+                  text: 'Tentar Novamente',
                   onPressed: _loadDocumentTypes,
-                  icon: Icon(Icons.refresh),
-                  label: Text('Tentar Novamente'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: buttonColor,
-                  ),
                 ),
               ],
             ),
@@ -398,54 +377,80 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     final optionalDocs = _documentTypes.where((doc) => doc['required'] != true).toList();
 
     return Scaffold(
-      backgroundColor: page,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: topBar,
-        title: Text('Enviar Documentos', style: TextStyle(color: textColor)),
-        iconTheme: IconThemeData(color: textColor),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Enviar Documentos',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Informação no topo
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue[200]!),
-              ),
-              child: Row(
+      body: _isLoadingDocumentTypes
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.info_outline, color: Colors.blue[700], size: 32),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Envie fotos nítidas dos documentos obrigatórios para completar seu cadastro.',
-                      style: GoogleFonts.notoSans(
-                        fontSize: 14,
-                        color: Colors.blue[900],
-                      ),
-                    ),
+                  CircularProgressIndicator(color: AppColors.primary),
+                  SizedBox(height: 16),
+                  Text(
+                    'Carregando documentos...',
+                    style: TextStyle(fontSize: 16, color: Colors.black87),
                   ),
                 ],
               ),
-            ),
-            SizedBox(height: 24),
+            )
+          : SingleChildScrollView(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Informação no topo
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, color: AppColors.primary, size: 28),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Envie fotos nítidas dos documentos obrigatórios para completar seu cadastro.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 24),
 
-            // Documentos obrigatórios
-            if (requiredDocs.isNotEmpty) ...[
+                  // Documentos obrigatórios
+                  if (requiredDocs.isNotEmpty) ...[
               Text(
                 'Documentos Obrigatórios *',
-                style: GoogleFonts.notoSans(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: textColor,
+                  color: Colors.black,
                 ),
               ),
-              SizedBox(height: 12),
+              SizedBox(height: 16),
               ...requiredDocs.map((doc) => _buildDocumentCard(doc)),
               SizedBox(height: 24),
             ],
@@ -454,13 +459,13 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
             if (optionalDocs.isNotEmpty) ...[
               Text(
                 'Documentos Opcionais',
-                style: GoogleFonts.notoSans(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: textColor,
+                  color: Colors.black,
                 ),
               ),
-              SizedBox(height: 12),
+              SizedBox(height: 16),
               ...optionalDocs.map((doc) => _buildDocumentCard(doc)),
             ],
 
@@ -481,33 +486,32 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     final isPending = _isDocumentPending(documentTypeId);
     final file = _selectedFiles[documentTypeId];
     final canUpload = !isApproved; // Só pode fazer upload se não estiver aprovado
+    final isUploading = _uploadingDocumentId == documentTypeId; // Verifica se este documento está sendo enviado
 
     // Cor da borda baseada no status
     Color borderColor = Colors.grey[300]!;
+    Color backgroundColor = const Color(0xFFF5F5F5);
+
     if (isApproved) {
-      borderColor = Colors.green;
+      borderColor = AppColors.primary;
+      backgroundColor = AppColors.primary.withValues(alpha: 0.1);
     } else if (isRejected) {
       borderColor = Colors.red;
+      backgroundColor = Colors.red.withValues(alpha: 0.05);
     } else if (isPending) {
       borderColor = Colors.orange;
+      backgroundColor = Colors.orange.withValues(alpha: 0.05);
     } else if (isRequired) {
-      borderColor = Colors.orange[200]!;
+      borderColor = AppColors.primary.withValues(alpha: 0.3);
     }
 
     return Container(
       margin: EdgeInsets.only(bottom: 16),
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isApproved ? Colors.green[50] : Colors.white,
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: borderColor, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -520,7 +524,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                 isPending ? Icons.hourglass_bottom :
                 Icons.camera_alt,
                 color: _getDocumentStatusColor(documentTypeId),
-                size: 32,
+                size: 28,
               ),
               SizedBox(width: 12),
               Expanded(
@@ -529,18 +533,18 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                   children: [
                     Text(
                       documentName,
-                      style: GoogleFonts.notoSans(
+                      style: TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: textColor,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
                       ),
                     ),
                     if (isRequired && !isUploaded)
                       Text(
                         'Obrigatório',
-                        style: GoogleFonts.notoSans(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: Colors.orange,
+                          color: AppColors.primary,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -551,15 +555,15 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _getDocumentStatusColor(documentTypeId).withValues(alpha: 0.1),
+                    color: _getDocumentStatusColor(documentTypeId).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     _getDocumentStatusText(documentTypeId),
-                    style: GoogleFonts.notoSans(
+                    style: TextStyle(
                       fontSize: 12,
                       color: _getDocumentStatusColor(documentTypeId),
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -583,7 +587,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                   Expanded(
                     child: Text(
                       'Documento rejeitado. Por favor, envie novamente.',
-                      style: GoogleFonts.notoSans(
+                      style: TextStyle(
                         fontSize: 13,
                         color: Colors.red[900],
                       ),
@@ -607,36 +611,71 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
             ),
           ],
 
-          // Botões de upload (só mostra se pode fazer upload)
+          // Botões de upload ou loading (só mostra se pode fazer upload)
           if (canUpload) ...[
             SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _pickImage(documentTypeId, documentName),
-                    icon: Icon(Icons.camera_alt, size: 20),
-                    label: Text('Câmera'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: buttonColor,
-                      side: BorderSide(color: buttonColor),
+            if (isUploading)
+              Container(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Text(
+                      'Enviando...',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _pickImage(documentTypeId, documentName),
+                      icon: Icon(Icons.camera_alt, size: 20),
+                      label: Text('Câmera'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(color: AppColors.primary, width: 1.5),
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _pickImageFromGallery(documentTypeId, documentName),
-                    icon: Icon(Icons.photo_library, size: 20),
-                    label: Text('Galeria'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: buttonColor,
-                      side: BorderSide(color: buttonColor),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _pickImageFromGallery(documentTypeId, documentName),
+                      icon: Icon(Icons.photo_library, size: 20),
+                      label: Text('Galeria'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(color: AppColors.primary, width: 1.5),
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
           ],
         ],
       ),

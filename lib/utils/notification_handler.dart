@@ -99,8 +99,7 @@ class NotificationHandler {
           ],
         ),
         content: Text(
-          'Parabéns! Seu cadastro foi aprovado pelo administrador.\n\n'
-          'Agora você pode fazer login e começar a trabalhar como motorista.',
+          'Parabéns seu cadastro foi aprovado pela Traki! Você já pode fazer login e começar e entregar.',
           style: TextStyle(fontSize: 16),
         ),
         actions: [

@@ -9,6 +9,7 @@ class LocalStorageService {
   static const _keyAccessToken = 'access_token';
   static const _keyDriverData = 'driver_data';
   static const _keySessionCookie = 'session_cookie';
+  static const _keyProfileImagePath = 'profile_image_path';
 
   // Salvar dados do motorista após cadastro/login
   static Future<void> saveDriverSession({
@@ -66,6 +67,16 @@ class LocalStorageService {
     return driverId != null && token != null;
   }
 
+  // Salvar caminho da imagem de perfil
+  static Future<void> saveProfileImagePath(String imagePath) async {
+    await _storage.write(key: _keyProfileImagePath, value: imagePath);
+  }
+
+  // Obter caminho da imagem de perfil
+  static Future<String?> getProfileImagePath() async {
+    return await _storage.read(key: _keyProfileImagePath);
+  }
+
   // Limpar sessão (logout)
   static Future<void> clearSession() async {
     await Future.wait([
@@ -73,6 +84,7 @@ class LocalStorageService {
       _storage.delete(key: _keyAccessToken),
       _storage.delete(key: _keyDriverData),
       _storage.delete(key: _keySessionCookie),
+      _storage.delete(key: _keyProfileImagePath),
     ]);
   }
 }

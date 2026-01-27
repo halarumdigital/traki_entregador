@@ -3,6 +3,7 @@ import '../services/registration_status_service.dart';
 import '../services/location_permission_service.dart';
 import '../services/driver_block_service.dart';
 import '../styles/styles.dart';
+import 'landing/landing_page_new.dart';
 import 'login/login.dart';
 import 'login/approval_status_screen.dart';
 import 'home_simple.dart';
@@ -54,20 +55,21 @@ class _SplashScreenState extends State<SplashScreen> {
     // Navegar para tela correta
     switch (status.targetScreen) {
       case DriverScreen.login:
+        // Nova landing page com design do Figma
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => Login()),
+          MaterialPageRoute(builder: (context) => const LandingPageNew()),
         );
         break;
 
       case DriverScreen.uploadDocuments:
         // Precisamos passar os dados do registro
         // Como já está registrado, não temos personalData/vehicleData aqui
-        // Vamos apenas redirecionar para login por enquanto
+        // Vamos apenas redirecionar para landing page por enquanto
         // TODO: Criar tela específica para continuar upload de documentos
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => Login()),
+          MaterialPageRoute(builder: (context) => const LandingPageNew()),
         );
         break;
 
@@ -95,11 +97,14 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: page,
+      backgroundColor: const Color(0xff8719CA), // Roxo do tema
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [buttonColor, buttonColor.withOpacity(0.7)],
+            colors: [
+              Color(0xff8719CA), // Roxo principal
+              Color(0xff6B0FA8), // Roxo mais escuro
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -108,58 +113,25 @@ class _SplashScreenState extends State<SplashScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo do app
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 20,
-                      offset: Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Icon(
-                  Icons.local_shipping,
-                  size: 60,
-                  color: buttonColor,
-                ),
+              // Logo da Traki
+              Image.asset(
+                'assets/images/logo.png',
+                width: 250,
+                height: 250,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  // Fallback se o logo não carregar
+                  return const Icon(
+                    Icons.local_shipping,
+                    size: 120,
+                    color: Colors.white,
+                  );
+                },
               ),
-              const SizedBox(height: 32),
-              Text(
-                'Fretus Driver',
-                style: TextStyle(
-                  fontSize: 36,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Seu parceiro de entregas',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.white.withOpacity(0.9),
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(height: 60),
-              CircularProgressIndicator(
+              const SizedBox(height: 40),
+              const CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 strokeWidth: 3,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Carregando...',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white.withOpacity(0.8),
-                ),
               ),
             ],
           ),

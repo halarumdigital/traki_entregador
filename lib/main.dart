@@ -2,6 +2,7 @@
 // import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:geolocator/geolocator.dart';
 // import 'package:installed_apps/installed_apps.dart';
 import 'package:quick_nav/quick_nav.dart';
@@ -230,6 +231,16 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             debugShowCheckedModeBanner: false,
             title: 'product name',
             theme: ThemeData(),
+            locale: const Locale('pt', 'BR'),
+            supportedLocales: const [
+              Locale('pt', 'BR'),
+              Locale('en', 'US'),
+            ],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
             home: const SplashScreen(),
             routes: {
               '/login': (context) => const LoginScreenNew(),

@@ -18,23 +18,14 @@ class _MyDeliveriesState extends State<MyDeliveries> {
   bool _isLoading = true;
   DeliveryHistoryResponse? _historyResponse;
   List<Delivery> _filteredDeliveries = [];
-  String _searchQuery = '';
   DateTime? _startDate;
   DateTime? _endDate;
   String? _selectedCompanyId;
-
-  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadDeliveries();
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadDeliveries() async {
@@ -59,8 +50,6 @@ class _MyDeliveriesState extends State<MyDeliveries> {
           _filteredDeliveries = allDeliveries;
           _isLoading = false;
         });
-
-        _applyFilters();
       } else {
         setState(() {
           _isLoading = false;
@@ -72,24 +61,6 @@ class _MyDeliveriesState extends State<MyDeliveries> {
         _isLoading = false;
       });
     }
-  }
-
-  void _applyFilters() {
-    if (_historyResponse == null) return;
-
-    var filtered = _historyResponse!.allDeliveries;
-
-    // Filtrar por texto de busca (nome da empresa)
-    if (_searchQuery.isNotEmpty) {
-      filtered = filtered.where((delivery) {
-        final companyName = delivery.companyName?.toLowerCase() ?? '';
-        return companyName.contains(_searchQuery.toLowerCase());
-      }).toList();
-    }
-
-    setState(() {
-      _filteredDeliveries = filtered;
-    });
   }
 
   Future<void> _selectDateRange() async {
@@ -122,14 +93,6 @@ class _MyDeliveriesState extends State<MyDeliveries> {
     }
   }
 
-  void _clearDateFilter() {
-    setState(() {
-      _startDate = null;
-      _endDate = null;
-    });
-    _loadDeliveries();
-  }
-
   String _formatCurrency(String? value) {
     if (value == null || value.isEmpty) return 'R\$ 0,00';
     final number = double.tryParse(value) ?? 0.0;
@@ -152,6 +115,125 @@ class _MyDeliveriesState extends State<MyDeliveries> {
     }
   }
 
+  String _formatTime(String? time) {
+    if (time == null || time.isEmpty) return '0 min';
+    final minutes = int.tryParse(time) ?? 0;
+    if (minutes >= 60) {
+      final hours = minutes ~/ 60;
+      final mins = minutes % 60;
+      return '${hours}h ${mins}min';
+    }
+    return '$minutes min';
+  }
+
+  void _showDeliveryDetails(Delivery delivery) {
+    var media = MediaQuery.of(context).size;
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: media.width * 0.8,
+            padding: EdgeInsets.all(media.width * 0.04),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header with theme color
+                Container(
+                  padding: EdgeInsets.only(bottom: media.width * 0.03),
+                  decoration: BoxDecoration(
+                    border: Border(bottom: BorderSide(color: theme, width: 2)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      MyText(
+                        text: 'Detalhes',
+                        size: media.width * sixteen,
+                        fontweight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                      InkWell(
+                        onTap: () => Navigator.pop(context),
+                        child: Icon(Icons.close, size: media.width * 0.05, color: textColor),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: media.width * 0.03),
+                // Info rows
+                _buildCompactRow('Empresa', delivery.companyName ?? '-', media),
+                _buildCompactRow('Cliente', delivery.customerName ?? '-', media),
+                _buildCompactRow('Tempo', _formatTime(delivery.estimatedTime), media),
+                _buildCompactRow('Distância', _formatDistance(delivery.distance), media),
+                _buildCompactRow('Valor', _formatCurrency(delivery.driverAmount), media),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactRow(String label, String value, Size media) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: media.width * 0.015),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          MyText(
+            text: label,
+            size: media.width * twelve,
+            color: Colors.grey[600]!,
+          ),
+          MyText(
+            text: value,
+            size: media.width * twelve,
+            fontweight: FontWeight.w600,
+            color: textColor,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterRow() {
+    var media = MediaQuery.of(context).size;
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: media.width * 0.05,
+        vertical: media.width * 0.03,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          MyText(
+            text: 'Filtros',
+            size: media.width * fourteen,
+            color: textColor,
+          ),
+          InkWell(
+            onTap: _selectDateRange,
+            child: Icon(
+              Icons.tune,
+              color: Colors.grey[600],
+              size: media.width * 0.06,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatsCard() {
     if (_historyResponse == null) return const SizedBox.shrink();
 
@@ -159,55 +241,50 @@ class _MyDeliveriesState extends State<MyDeliveries> {
     var media = MediaQuery.of(context).size;
 
     return Container(
-      margin: EdgeInsets.all(media.width * 0.05),
+      margin: EdgeInsets.symmetric(horizontal: media.width * 0.05),
       padding: EdgeInsets.all(media.width * 0.04),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          MyText(
-            text: 'Resumo',
-            size: media.width * eighteen,
-            fontweight: FontWeight.bold,
-            color: textColor,
-          ),
-          SizedBox(height: media.width * 0.03),
+          // Stats icons row
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildStatItem(
                 'Total',
                 '${stats.totalDeliveries}',
-                Icons.local_shipping,
+                Icons.inventory_2_outlined,
+                const Color(0xFF9C27B0),
                 media,
               ),
               _buildStatItem(
                 'Concluídas',
                 '${stats.completedDeliveries}',
-                Icons.check_circle,
+                Icons.check_circle_outline,
+                const Color(0xFF9C27B0),
                 media,
               ),
               _buildStatItem(
                 'Canceladas',
                 '${stats.cancelledDeliveries}',
-                Icons.cancel,
+                Icons.cancel_outlined,
+                const Color(0xFF9C27B0),
                 media,
               ),
             ],
           ),
-          SizedBox(height: media.width * 0.03),
-          Divider(color: Colors.grey[300]),
-          SizedBox(height: media.width * 0.03),
+          SizedBox(height: media.width * 0.04),
+          // Total and Distance row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -215,15 +292,15 @@ class _MyDeliveriesState extends State<MyDeliveries> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   MyText(
-                    text: 'Ganhos Totais',
+                    text: 'Total',
                     size: media.width * twelve,
-                    color: textColor.withOpacity(0.7),
+                    color: Colors.grey[500]!,
                   ),
                   MyText(
                     text: _formatCurrency(stats.totalEarnings.toString()),
                     size: media.width * sixteen,
                     fontweight: FontWeight.bold,
-                    color: Colors.green,
+                    color: textColor,
                   ),
                 ],
               ),
@@ -231,9 +308,9 @@ class _MyDeliveriesState extends State<MyDeliveries> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   MyText(
-                    text: 'Distância Total',
+                    text: 'Distância total',
                     size: media.width * twelve,
-                    color: textColor.withOpacity(0.7),
+                    color: Colors.grey[500]!,
                   ),
                   MyText(
                     text: _formatDistance(stats.totalDistance.toString()),
@@ -250,11 +327,20 @@ class _MyDeliveriesState extends State<MyDeliveries> {
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon, Size media) {
+  Widget _buildStatItem(
+      String label, String value, IconData icon, Color color, Size media) {
     return Column(
       children: [
-        Icon(icon, size: media.width * 0.08, color: theme),
-        SizedBox(height: media.width * 0.01),
+        Container(
+          width: media.width * 0.12,
+          height: media.width * 0.12,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: color, width: 2),
+          ),
+          child: Icon(icon, size: media.width * 0.06, color: color),
+        ),
+        SizedBox(height: media.width * 0.02),
         MyText(
           text: value,
           size: media.width * eighteen,
@@ -263,109 +349,26 @@ class _MyDeliveriesState extends State<MyDeliveries> {
         ),
         MyText(
           text: label,
-          size: media.width * twelve,
-          color: textColor.withOpacity(0.7),
+          size: media.width * ten,
+          color: Colors.grey[500]!,
         ),
       ],
     );
   }
 
-  Widget _buildFilters() {
-    var media = MediaQuery.of(context).size;
-
-    return Container(
-      padding: EdgeInsets.all(media.width * 0.05),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Campo de busca
-          TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: 'Buscar por empresa...',
-              prefixIcon: Icon(Icons.search, color: theme),
-              suffixIcon: _searchQuery.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        _searchController.clear();
-                        setState(() {
-                          _searchQuery = '';
-                        });
-                        _applyFilters();
-                      },
-                    )
-                  : null,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.grey[300]!),
-              ),
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: media.width * 0.04,
-                vertical: media.width * 0.03,
-              ),
-            ),
-            onChanged: (value) {
-              setState(() {
-                _searchQuery = value;
-              });
-              _applyFilters();
-            },
-          ),
-          SizedBox(height: media.width * 0.03),
-          // Filtro de data
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: _selectDateRange,
-                  child: Container(
-                    padding: EdgeInsets.all(media.width * 0.03),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey[300]!),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.date_range, color: theme, size: media.width * 0.05),
-                        SizedBox(width: media.width * 0.02),
-                        Expanded(
-                          child: MyText(
-                            text: _startDate != null && _endDate != null
-                                ? '${DateFormat('dd/MM/yyyy').format(_startDate!)} - ${DateFormat('dd/MM/yyyy').format(_endDate!)}'
-                                : 'Selecionar período',
-                            size: media.width * fourteen,
-                            color: textColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              if (_startDate != null && _endDate != null)
-                IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: _clearDateFilter,
-                  color: theme,
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
+  Map<String, List<Delivery>> _groupDeliveriesByDate() {
+    final Map<String, List<Delivery>> grouped = {};
+    for (var delivery in _filteredDeliveries) {
+      final date = _formatDate(delivery.deliveredAt);
+      if (!grouped.containsKey(date)) {
+        grouped[date] = [];
+      }
+      grouped[date]!.add(delivery);
+    }
+    return grouped;
   }
 
-  Widget _buildDeliveryGrid() {
+  Widget _buildDeliveryList() {
     var media = MediaQuery.of(context).size;
 
     if (_filteredDeliveries.isEmpty) {
@@ -389,17 +392,21 @@ class _MyDeliveriesState extends State<MyDeliveries> {
       );
     }
 
+    final groupedDeliveries = _groupDeliveriesByDate();
+    final dates = groupedDeliveries.keys.toList();
+
     return ListView.builder(
       padding: EdgeInsets.all(media.width * 0.05),
-      itemCount: _filteredDeliveries.length,
+      itemCount: dates.length,
       itemBuilder: (context, index) {
-        final delivery = _filteredDeliveries[index];
-        return _buildDeliveryCard(delivery, media);
+        final date = dates[index];
+        final deliveries = groupedDeliveries[date]!;
+        return _buildDateGroup(date, deliveries, media);
       },
     );
   }
 
-  Widget _buildDeliveryCard(Delivery delivery, Size media) {
+  Widget _buildDateGroup(String date, List<Delivery> deliveries, Size media) {
     return Container(
       margin: EdgeInsets.only(bottom: media.width * 0.03),
       decoration: BoxDecoration(
@@ -407,151 +414,108 @@ class _MyDeliveriesState extends State<MyDeliveries> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Cabeçalho com data e status
+          // Date header
           Container(
-            padding: EdgeInsets.all(media.width * 0.03),
+            padding: EdgeInsets.symmetric(
+              horizontal: media.width * 0.04,
+              vertical: media.width * 0.03,
+            ),
             decoration: BoxDecoration(
-              color: theme.withOpacity(0.1),
+              color: const Color(0xFF9C27B0).withOpacity(0.1),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
               ),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(Icons.calendar_today, size: media.width * 0.04, color: theme),
-                    SizedBox(width: media.width * 0.02),
-                    MyText(
-                      text: _formatDate(delivery.deliveredAt),
-                      size: media.width * fourteen,
-                      fontweight: FontWeight.w600,
-                      color: textColor,
-                    ),
-                  ],
+                Icon(
+                  Icons.calendar_today,
+                  size: media.width * 0.04,
+                  color: const Color(0xFF9C27B0),
                 ),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: media.width * 0.03,
-                    vertical: media.width * 0.01,
-                  ),
-                  decoration: BoxDecoration(
-                    color: delivery.status == 'completed'
-                        ? Colors.green.withOpacity(0.2)
-                        : Colors.red.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: MyText(
-                    text: delivery.status == 'completed' ? 'Concluída' : 'Cancelada',
-                    size: media.width * twelve,
-                    fontweight: FontWeight.w600,
-                    color: delivery.status == 'completed' ? Colors.green : Colors.red,
-                  ),
+                SizedBox(width: media.width * 0.02),
+                MyText(
+                  text: date,
+                  size: media.width * fourteen,
+                  fontweight: FontWeight.w600,
+                  color: textColor,
+                ),
+                const Spacer(),
+                MyText(
+                  text: '${deliveries.length} ${deliveries.length == 1 ? 'entrega' : 'entregas'}',
+                  size: media.width * twelve,
+                  color: Colors.grey[600]!,
                 ),
               ],
             ),
           ),
-          // Conteúdo
-          Padding(
-            padding: EdgeInsets.all(media.width * 0.04),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Empresa
-                if (delivery.companyName != null)
-                  Row(
-                    children: [
-                      Icon(Icons.business, size: media.width * 0.05, color: theme),
-                      SizedBox(width: media.width * 0.02),
-                      Expanded(
-                        child: MyText(
-                          text: delivery.companyName!,
-                          size: media.width * sixteen,
-                          fontweight: FontWeight.bold,
-                          color: textColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                SizedBox(height: media.width * 0.03),
-                // Grid de informações
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildInfoItem(
-                        'Valor',
-                        _formatCurrency(delivery.driverAmount),
-                        Icons.attach_money,
-                        Colors.green,
-                        media,
-                      ),
-                    ),
-                    SizedBox(width: media.width * 0.02),
-                    Expanded(
-                      child: _buildInfoItem(
-                        'Distância',
-                        _formatDistance(delivery.distance),
-                        Icons.route,
-                        Colors.blue,
-                        media,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+          // Deliveries list
+          ...deliveries.map((delivery) => _buildDeliveryItem(delivery, media)),
         ],
       ),
     );
   }
 
-  Widget _buildInfoItem(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-    Size media,
-  ) {
-    return Container(
-      padding: EdgeInsets.all(media.width * 0.03),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: media.width * 0.04, color: color),
-              SizedBox(width: media.width * 0.01),
-              MyText(
-                text: label,
+  Widget _buildDeliveryItem(Delivery delivery, Size media) {
+    return InkWell(
+      onTap: () => _showDeliveryDetails(delivery),
+      child: Container(
+        padding: EdgeInsets.all(media.width * 0.03),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: Colors.grey[200]!, width: 1)),
+        ),
+        child: Row(
+          children: [
+            // Company name
+            Expanded(
+              flex: 2,
+              child: MyText(
+                text: delivery.companyName ?? 'Empresa',
                 size: media.width * twelve,
-                color: textColor.withOpacity(0.7),
+                fontweight: FontWeight.w600,
+                color: textColor,
               ),
-            ],
-          ),
-          SizedBox(height: media.width * 0.01),
-          MyText(
-            text: value,
-            size: media.width * fourteen,
-            fontweight: FontWeight.bold,
-            color: textColor,
-          ),
-        ],
+            ),
+            // Value
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: media.width * 0.02, vertical: media.width * 0.01),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8E1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: MyText(
+                text: _formatCurrency(delivery.driverAmount),
+                size: media.width * ten,
+                fontweight: FontWeight.w600,
+                color: textColor,
+              ),
+            ),
+            SizedBox(width: media.width * 0.02),
+            // Distance
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: media.width * 0.02, vertical: media.width * 0.01),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFCE4EC),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: MyText(
+                text: _formatDistance(delivery.distance),
+                size: media.width * ten,
+                fontweight: FontWeight.w600,
+                color: textColor,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -563,73 +527,35 @@ class _MyDeliveriesState extends State<MyDeliveries> {
     return Material(
       child: Scaffold(
         backgroundColor: page,
-        body: Column(
-          children: [
-            // AppBar customizado
-            Container(
-                padding: EdgeInsets.only(
-                  left: media.width * 0.05,
-                  right: media.width * 0.05,
-                  top: MediaQuery.of(context).padding.top + media.width * 0.05,
-                  bottom: media.width * 0.05,
-                ),
-                decoration: BoxDecoration(
-                  color: theme,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    InkWell(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        height: media.width * 0.1,
-                        width: media.width * 0.1,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.2),
-                        ),
-                        alignment: Alignment.center,
-                        child: Icon(
-                          Icons.arrow_back,
-                          color: Colors.white,
-                          size: media.width * 0.05,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: media.width * 0.03),
-                    MyText(
-                      text: 'Minhas Entregas',
-                      size: media.width * twenty,
-                      fontweight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ],
-                ),
-              ),
-              // Conteúdo
-              Expanded(
-                child: _isLoading
-                    ? Center(
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(theme),
-                        ),
-                      )
-                    : Column(
-                        children: [
-                          _buildStatsCard(),
-                          _buildFilters(),
-                          Expanded(child: _buildDeliveryGrid()),
-                        ],
-                      ),
-            ),
-          ],
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: textColor),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: MyText(
+            text: 'Minhas Entregas',
+            size: media.width * eighteen,
+            fontweight: FontWeight.bold,
+            color: textColor,
+          ),
+          centerTitle: true,
         ),
+        body: _isLoading
+            ? Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(theme),
+                ),
+              )
+            : Column(
+                children: [
+                  _buildFilterRow(),
+                  _buildStatsCard(),
+                  SizedBox(height: media.width * 0.03),
+                  Expanded(child: _buildDeliveryList()),
+                ],
+              ),
       ),
     );
   }

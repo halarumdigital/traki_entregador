@@ -4,6 +4,7 @@ class ViagemColeta {
   final String viagemId;
   final String entregaId;
   final String empresaNome;
+  final String? empresaTelefone;
   final String enderecoColeta;
   final double? latitude;
   final double? longitude;
@@ -24,6 +25,7 @@ class ViagemColeta {
     required this.viagemId,
     required this.entregaId,
     required this.empresaNome,
+    this.empresaTelefone,
     required this.enderecoColeta,
     this.latitude,
     this.longitude,
@@ -46,6 +48,7 @@ class ViagemColeta {
       viagemId: json['viagem_id']?.toString() ?? json['viagemId']?.toString() ?? '',
       entregaId: json['entrega_id']?.toString() ?? json['entregaId']?.toString() ?? '',
       empresaNome: json['empresa_nome']?.toString() ?? json['empresaNome']?.toString() ?? '',
+      empresaTelefone: json['empresa_telefone']?.toString() ?? json['empresaTelefone']?.toString(),
       enderecoColeta: json['endereco_completo']?.toString() ?? json['enderecoColeta']?.toString() ?? '',
       latitude: json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null,
       longitude: json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null,
@@ -89,6 +92,7 @@ class ViagemColeta {
       'viagemId': viagemId,
       'entregaId': entregaId,
       'empresaNome': empresaNome,
+      'empresaTelefone': empresaTelefone,
       'enderecoColeta': enderecoColeta,
       'latitude': latitude,
       'longitude': longitude,
@@ -135,6 +139,7 @@ class ViagemColeta {
     String? viagemId,
     String? entregaId,
     String? empresaNome,
+    String? empresaTelefone,
     String? enderecoColeta,
     double? latitude,
     double? longitude,
@@ -155,6 +160,7 @@ class ViagemColeta {
       viagemId: viagemId ?? this.viagemId,
       entregaId: entregaId ?? this.entregaId,
       empresaNome: empresaNome ?? this.empresaNome,
+      empresaTelefone: empresaTelefone ?? this.empresaTelefone,
       enderecoColeta: enderecoColeta ?? this.enderecoColeta,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,

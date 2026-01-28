@@ -62,7 +62,10 @@ String packageName = '';
 String signKey = '';
 
 //base url
-String url = 'http://192.168.1.2:5030/'; //add '/' at the end of the url as 'https://url.com/'
+const String _env = String.fromEnvironment('ENV', defaultValue: 'local');
+String url = _env == 'vps'
+    ? 'https://dev.traki.com.br/'  // VPS
+    : 'http://192.168.1.2:5030/';  // desenvolvimento local
 String mapkey =
     (platform == TargetPlatform.android) ? 'AIzaSyANsPBDNfBx4_mjWvBaYxNVHZh2PPEExsM' : 'ios map key';
 

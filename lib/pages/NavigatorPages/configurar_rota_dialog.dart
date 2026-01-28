@@ -52,7 +52,7 @@ class _ConfigurarRotaDialogState extends State<ConfigurarRotaDialog> {
         return Theme(
           data: ThemeData.light().copyWith(
             colorScheme: ColorScheme.light(
-              primary: theme,
+              primary: Colors.purple,
               onPrimary: Colors.white,
             ),
           ),
@@ -156,12 +156,12 @@ class _ConfigurarRotaDialogState extends State<ConfigurarRotaDialog> {
                     Container(
                       padding: EdgeInsets.all(media.width * 0.02),
                       decoration: BoxDecoration(
-                        color: theme.withOpacity(0.1),
+                        color: Colors.purple.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
                         Icons.settings,
-                        color: theme,
+                        color: Colors.purple,
                         size: media.width * 0.06,
                       ),
                     ),
@@ -202,7 +202,7 @@ class _ConfigurarRotaDialogState extends State<ConfigurarRotaDialog> {
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: InputDecoration(
                     hintText: 'Ex: 50',
-                    prefixIcon: Icon(Icons.inventory_2, color: theme),
+                    prefixIcon: Icon(Icons.inventory_2, color: Colors.purple),
                     suffixText: 'pacotes',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -238,7 +238,7 @@ class _ConfigurarRotaDialogState extends State<ConfigurarRotaDialog> {
                   ],
                   decoration: InputDecoration(
                     hintText: 'Ex: 500',
-                    prefixIcon: Icon(Icons.scale, color: theme),
+                    prefixIcon: Icon(Icons.scale, color: Colors.purple),
                     suffixText: 'kg',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -278,7 +278,7 @@ class _ConfigurarRotaDialogState extends State<ConfigurarRotaDialog> {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.access_time, color: theme),
+                        Icon(Icons.access_time, color: Colors.purple),
                         SizedBox(width: media.width * 0.03),
                         MyText(
                           text: _formatarHorario(_horarioSaida),
@@ -326,7 +326,7 @@ class _ConfigurarRotaDialogState extends State<ConfigurarRotaDialog> {
                             }
                           });
                         },
-                        selectedColor: theme.withOpacity(0.7),
+                        selectedColor: Colors.purple.withOpacity(0.7),
                         backgroundColor: Colors.grey[200],
                         labelStyle: TextStyle(
                           color: diaSelecionado ? Colors.white : textColor,
@@ -377,7 +377,7 @@ class _ConfigurarRotaDialogState extends State<ConfigurarRotaDialog> {
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _salvar,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: theme,
+                          backgroundColor: Colors.purple,
                           padding: EdgeInsets.symmetric(vertical: media.width * 0.04),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),

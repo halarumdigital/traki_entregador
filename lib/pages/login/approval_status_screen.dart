@@ -257,7 +257,7 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
               _buildHeader(),
               _buildTimeline(),
               _buildActionButton(),
-              SizedBox(height: 24),
+              SizedBox(height: 16),
             ],
           ),
         ),
@@ -268,7 +268,7 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(24),
+      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: _getStatusGradient(statusData!.status),
@@ -279,22 +279,22 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
       child: Column(
         children: [
           CircleAvatar(
-            radius: 50,
+            radius: 35,
             backgroundColor: Colors.white,
             child: _profileImagePath != null && _profileImagePath!.isNotEmpty
                 ? ClipOval(
                     child: Image.network(
                       _profileImagePath!,
                       fit: BoxFit.cover,
-                      width: 100,
-                      height: 100,
+                      width: 70,
+                      height: 70,
                       errorBuilder: (context, error, stackTrace) {
                         // Se falhar ao carregar, mostra a letra
                         return Text(
                           statusData!.driverName.isNotEmpty
                               ? statusData!.driverName[0].toUpperCase()
                               : 'M',
-                          style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Color(0xFF8719CA)),
+                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF8719CA)),
                         );
                       },
                       loadingBuilder: (context, child, loadingProgress) {
@@ -314,22 +314,22 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
                     statusData!.driverName.isNotEmpty
                         ? statusData!.driverName[0].toUpperCase()
                         : 'M',
-                    style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Color(0xFF8719CA)), // Roxo do tema
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF8719CA)), // Roxo do tema
                   ),
           ),
-          SizedBox(height: 16),
+          SizedBox(height: 10),
           Text(
             statusData!.driverName,
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
             textAlign: TextAlign.center,
           ),
-          SizedBox(height: 8),
+          SizedBox(height: 6),
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.2),
               borderRadius: BorderRadius.circular(20),
@@ -338,7 +338,7 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
               _getStatusMessage(statusData!.status),
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 16,
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -350,8 +350,8 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
 
   Widget _buildTimeline() {
     return Container(
-      margin: EdgeInsets.all(16),
-      padding: EdgeInsets.all(20),
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -369,12 +369,12 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
           Text(
             'Progresso do Cadastro',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               color: textColor,
             ),
           ),
-          SizedBox(height: 24),
+          SizedBox(height: 16),
           ...statusData!.timeline.asMap().entries.map((entry) {
             final index = entry.key;
             final step = entry.value;
@@ -396,25 +396,25 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
         Column(
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: color,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
                     color: color.withOpacity(0.3),
-                    blurRadius: 8,
+                    blurRadius: 6,
                     offset: Offset(0, 2),
                   ),
                 ],
               ),
-              child: Icon(icon, color: Colors.white, size: 24),
+              child: Icon(icon, color: Colors.white, size: 20),
             ),
             if (!isLast)
               Container(
                 width: 2,
-                height: 70,
+                height: 50,
                 margin: EdgeInsets.symmetric(vertical: 4),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -429,40 +429,40 @@ class _ApprovalStatusScreenState extends State<ApprovalStatusScreen> {
               ),
           ],
         ),
-        SizedBox(width: 16),
+        SizedBox(width: 12),
         Expanded(
           child: Padding(
-            padding: EdgeInsets.only(bottom: isLast ? 0 : 24),
+            padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   step.title,
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: textColor,
                   ),
                 ),
-                SizedBox(height: 4),
+                SizedBox(height: 2),
                 Text(
                   _adjustDescription(step.description),
                   style: TextStyle(
                     color: Colors.grey[600],
-                    fontSize: 14,
+                    fontSize: 12,
                   ),
                 ),
                 if (step.date != null)
                   Padding(
-                    padding: EdgeInsets.only(top: 8),
+                    padding: EdgeInsets.only(top: 4),
                     child: Row(
                       children: [
-                        Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
+                        Icon(Icons.access_time, size: 12, color: Colors.grey[500]),
                         SizedBox(width: 4),
                         Text(
                           _formatDate(step.date!),
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             color: Colors.grey[500],
                             fontWeight: FontWeight.w500,
                           ),

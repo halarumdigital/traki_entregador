@@ -421,21 +421,14 @@ class NotificationHandler {
       debugPrint('🛣️ Tentando mostrar modal de nova solicitação de entrega intermunicipal');
       _isIntermunicipalDialogOpen = true;
 
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) {
-          debugPrint('🎨 Builder do modal IntermunicipalDeliveryRequestDialog chamado');
-          return IntermunicipalDeliveryRequestDialog(data: data);
-        },
-      ).then((_) {
+      IntermunicipalDeliveryRequestDialog.show(context, data).then((_) {
         // Quando o modal fechar, marcar como disponível
         _isIntermunicipalDialogOpen = false;
         _processingIntermunicipalDeliveries.remove(entregaId);
         debugPrint('✅ Modal de entrega intermunicipal fechado');
       });
 
-      debugPrint('✅ showDialog() chamado com sucesso');
+      debugPrint('✅ showModalBottomSheet() chamado com sucesso');
     } catch (e, stackTrace) {
       debugPrint('❌ ERRO ao processar notificação de entrega intermunicipal: $e');
       debugPrint('❌ StackTrace: $stackTrace');

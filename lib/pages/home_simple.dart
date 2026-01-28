@@ -25,6 +25,7 @@ import 'NavigatorPages/support_tickets.dart';
 import 'NavigatorPages/entregas_ativas.dart';
 import 'NavigatorPages/minhas_rotas.dart';
 import 'NavigatorPages/minhas_viagens.dart';
+import 'NavigatorPages/rotas_hub.dart';
 import 'NavigatorPages/carteira_page.dart';
 import 'NavigatorPages/notification.dart';
 import 'auth/login_screen_new.dart';
@@ -3030,6 +3031,7 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                   },
                 ),
               ),
+              _buildNavBarItem(Icons.route_outlined, 'Rotas', false),
               _buildNavBarItem(Icons.person_outline, 'Perfil', false),
             ],
           ),
@@ -3046,6 +3048,13 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
             context,
             MaterialPageRoute(
               builder: (context) => const CarteiraPage(),
+            ),
+          );
+        } else if (label == 'Rotas') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const MinhasViagensScreen(),
             ),
           );
         } else if (label == 'Perfil') {

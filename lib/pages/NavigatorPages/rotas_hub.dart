@@ -25,7 +25,7 @@ class RotasHubScreen extends StatelessWidget {
                 bottom: media.width * 0.05,
               ),
               decoration: BoxDecoration(
-                color: theme,
+                color: Colors.purple,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),

@@ -18,6 +18,9 @@ class _RotasDisponiveisScreenState extends State<RotasDisponiveisScreen> {
   bool _isLoading = true;
   List<Rota> _rotas = [];
 
+  // Cor principal da tela
+  static const Color _primaryColor = Colors.purple;
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +46,203 @@ class _RotasDisponiveisScreenState extends State<RotasDisponiveisScreen> {
     }
   }
 
+  void _mostrarDetalhesRota(Rota rota) {
+    final media = MediaQuery.of(context).size;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header roxo
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(media.width * 0.05),
+              decoration: BoxDecoration(
+                color: _primaryColor.withOpacity(0.1),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(media.width * 0.03),
+                    decoration: BoxDecoration(
+                      color: _primaryColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.route,
+                      color: Colors.white,
+                      size: media.width * 0.07,
+                    ),
+                  ),
+                  SizedBox(width: media.width * 0.04),
+                  Expanded(
+                    child: MyText(
+                      text: 'Nova Rota Disponível!',
+                      size: media.width * eighteen,
+                      fontweight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Conteúdo
+            Padding(
+              padding: EdgeInsets.all(media.width * 0.05),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Rota (Origem → Destino)
+                  _buildInfoSection(
+                    icon: Icons.route,
+                    label: 'Rota',
+                    value: '${rota.cidadeOrigemNome} → ${rota.cidadeDestinoNome}',
+                    color: _primaryColor,
+                    media: media,
+                  ),
+
+                  // Nome da Rota
+                  if (rota.nomeRota.isNotEmpty)
+                    _buildInfoSection(
+                      icon: Icons.label,
+                      label: 'Nome',
+                      value: rota.nomeRota,
+                      color: Colors.indigo,
+                      media: media,
+                    ),
+
+                  // Distância
+                  _buildInfoSection(
+                    icon: Icons.straighten,
+                    label: 'Distância',
+                    value: '${rota.distanciaKm} km',
+                    color: Colors.blue,
+                    media: media,
+                  ),
+
+                  // Tempo Estimado
+                  _buildInfoSection(
+                    icon: Icons.timer,
+                    label: 'Tempo Estimado',
+                    value: rota.tempoEstimadoFormatado,
+                    color: Colors.orange,
+                    media: media,
+                  ),
+
+                  SizedBox(height: media.width * 0.05),
+
+                  // Botões
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: media.width * 0.04),
+                            side: BorderSide(color: Colors.grey[400]!),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: MyText(
+                            text: 'Recusar',
+                            size: media.width * sixteen,
+                            color: textColor.withOpacity(0.7),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: media.width * 0.03),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _mostrarDialogConfigurar(rota);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _primaryColor,
+                            padding: EdgeInsets.symmetric(vertical: media.width * 0.04),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: MyText(
+                            text: 'Aceitar',
+                            size: media.width * sixteen,
+                            fontweight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: media.width * 0.02),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoSection({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+    required Size media,
+  }) {
+    return Container(
+      margin: EdgeInsets.only(bottom: media.width * 0.03),
+      padding: EdgeInsets.all(media.width * 0.035),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: media.width * 0.055),
+          SizedBox(width: media.width * 0.03),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                MyText(
+                  text: label,
+                  size: media.width * twelve,
+                  color: textColor.withOpacity(0.6),
+                ),
+                MyText(
+                  text: value,
+                  size: media.width * fourteen,
+                  fontweight: FontWeight.w600,
+                  color: textColor,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _mostrarDialogConfigurar(Rota rota) async {
     final resultado = await showDialog<bool>(
       context: context,
@@ -50,9 +250,8 @@ class _RotasDisponiveisScreenState extends State<RotasDisponiveisScreen> {
     );
 
     if (resultado == true) {
-      // Rota configurada com sucesso
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Row(
             children: [
               Icon(Icons.check_circle, color: Colors.white),
@@ -67,7 +266,6 @@ class _RotasDisponiveisScreenState extends State<RotasDisponiveisScreen> {
         ),
       );
 
-      // Voltar para tela anterior
       Navigator.pop(context, true);
     }
   }
@@ -81,7 +279,7 @@ class _RotasDisponiveisScreenState extends State<RotasDisponiveisScreen> {
         backgroundColor: page,
         body: Column(
           children: [
-            // AppBar customizado
+            // AppBar
             Container(
               padding: EdgeInsets.only(
                 left: media.width * 0.05,
@@ -90,7 +288,7 @@ class _RotasDisponiveisScreenState extends State<RotasDisponiveisScreen> {
                 bottom: media.width * 0.05,
               ),
               decoration: BoxDecoration(
-                color: theme,
+                color: _primaryColor,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
@@ -132,11 +330,7 @@ class _RotasDisponiveisScreenState extends State<RotasDisponiveisScreen> {
             // Conteúdo
             Expanded(
               child: _isLoading
-                  ? Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(theme),
-                      ),
-                    )
+                  ? Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(_primaryColor)))
                   : _rotas.isEmpty
                       ? _buildEmptyState(media)
                       : RefreshIndicator(
@@ -184,178 +378,83 @@ class _RotasDisponiveisScreenState extends State<RotasDisponiveisScreen> {
   }
 
   Widget _buildRotaCard(Rota rota, Size media) {
-    return Container(
-      margin: EdgeInsets.only(bottom: media.width * 0.04),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Cabeçalho com ícone de rota
-          Container(
-            padding: EdgeInsets.all(media.width * 0.04),
-            decoration: BoxDecoration(
-              color: theme.withOpacity(0.1),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
+    return InkWell(
+      onTap: () => _mostrarDetalhesRota(rota),
+      child: Container(
+        margin: EdgeInsets.only(bottom: media.width * 0.03),
+        padding: EdgeInsets.all(media.width * 0.04),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _primaryColor.withOpacity(0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Ícone
+            Container(
+              padding: EdgeInsets.all(media.width * 0.03),
+              decoration: BoxDecoration(
+                color: _primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.route,
+                color: _primaryColor,
+                size: media.width * 0.06,
               ),
             ),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(media.width * 0.03),
-                  decoration: BoxDecoration(
-                    color: theme,
-                    borderRadius: BorderRadius.circular(8),
+            SizedBox(width: media.width * 0.035),
+
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  MyText(
+                    text: '${rota.cidadeOrigemNome} → ${rota.cidadeDestinoNome}',
+                    size: media.width * fourteen,
+                    fontweight: FontWeight.bold,
+                    color: textColor,
                   ),
-                  child: Icon(
-                    Icons.route,
-                    color: Colors.white,
-                    size: media.width * 0.06,
-                  ),
-                ),
-                SizedBox(width: media.width * 0.03),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  SizedBox(height: media.width * 0.01),
+                  Row(
                     children: [
+                      Icon(Icons.straighten, size: media.width * 0.035, color: Colors.grey[600]),
+                      SizedBox(width: media.width * 0.01),
                       MyText(
-                        text: rota.cidadeOrigemNome,
-                        size: media.width * sixteen,
-                        fontweight: FontWeight.bold,
-                        color: textColor,
+                        text: '${rota.distanciaKm} km',
+                        size: media.width * twelve,
+                        color: textColor.withOpacity(0.7),
                       ),
-                      Row(
-                        children: [
-                          Icon(Icons.arrow_downward, size: media.width * 0.04, color: theme),
-                          SizedBox(width: media.width * 0.01),
-                          MyText(
-                            text: rota.cidadeDestinoNome,
-                            size: media.width * fourteen,
-                            fontweight: FontWeight.w600,
-                            color: theme,
-                          ),
-                        ],
+                      SizedBox(width: media.width * 0.03),
+                      Icon(Icons.timer, size: media.width * 0.035, color: Colors.grey[600]),
+                      SizedBox(width: media.width * 0.01),
+                      MyText(
+                        text: rota.tempoEstimadoFormatado,
+                        size: media.width * twelve,
+                        color: textColor.withOpacity(0.7),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-          ),
-
-          // Informações da rota
-          Padding(
-            padding: EdgeInsets.all(media.width * 0.04),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildInfoItem(
-                        'Distância',
-                        '${rota.distanciaKm} km',
-                        Icons.straighten,
-                        Colors.blue,
-                        media,
-                      ),
-                    ),
-                    SizedBox(width: media.width * 0.03),
-                    Expanded(
-                      child: _buildInfoItem(
-                        'Tempo Estimado',
-                        rota.tempoEstimadoFormatado,
-                        Icons.schedule,
-                        Colors.orange,
-                        media,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: media.width * 0.04),
-
-                // Botão configurar
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => _mostrarDialogConfigurar(rota),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme,
-                      padding: EdgeInsets.symmetric(vertical: media.width * 0.04),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.add_circle, color: Colors.white, size: media.width * 0.05),
-                        SizedBox(width: media.width * 0.02),
-                        MyText(
-                          text: 'Configurar Rota',
-                          size: media.width * sixteen,
-                          fontweight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoItem(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-    Size media,
-  ) {
-    return Container(
-      padding: EdgeInsets.all(media.width * 0.03),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: media.width * 0.04, color: color),
-              SizedBox(width: media.width * 0.02),
-              Expanded(
-                child: MyText(
-                  text: label,
-                  size: media.width * twelve,
-                  color: textColor.withOpacity(0.7),
-                ),
+                ],
               ),
-            ],
-          ),
-          SizedBox(height: media.width * 0.01),
-          MyText(
-            text: value,
-            size: media.width * fourteen,
-            fontweight: FontWeight.bold,
-            color: textColor,
-          ),
-        ],
+            ),
+
+            // Seta
+            Icon(
+              Icons.chevron_right,
+              color: _primaryColor,
+              size: media.width * 0.06,
+            ),
+          ],
+        ),
       ),
     );
   }

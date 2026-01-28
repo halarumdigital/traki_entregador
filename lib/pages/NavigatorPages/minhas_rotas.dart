@@ -19,6 +19,9 @@ class _MinhasRotasScreenState extends State<MinhasRotasScreen> {
   bool _isLoading = true;
   List<MinhaRota> _rotas = [];
 
+  // Cor principal da tela
+  static const Color _primaryColor = Colors.purple;
+
   @override
   void initState() {
     super.initState();
@@ -118,6 +121,199 @@ class _MinhasRotasScreenState extends State<MinhasRotasScreen> {
     }
   }
 
+  void _mostrarDetalhes(MinhaRota rota) {
+    final media = MediaQuery.of(context).size;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        padding: EdgeInsets.all(media.width * 0.05),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Container(
+              width: media.width * 0.1,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            SizedBox(height: media.width * 0.04),
+
+            // Título + Status
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      MyText(
+                        text: rota.cidadeOrigemNome,
+                        size: media.width * eighteen,
+                        fontweight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                      Row(
+                        children: [
+                          Icon(Icons.arrow_forward, size: media.width * 0.04, color: _primaryColor),
+                          SizedBox(width: media.width * 0.01),
+                          MyText(
+                            text: rota.cidadeDestinoNome,
+                            size: media.width * fourteen,
+                            fontweight: FontWeight.w600,
+                            color: _primaryColor,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: media.width * 0.03,
+                    vertical: media.width * 0.015,
+                  ),
+                  decoration: BoxDecoration(
+                    color: rota.ativo ? Colors.green.withOpacity(0.15) : Colors.grey.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: MyText(
+                    text: rota.ativo ? 'Ativa' : 'Inativa',
+                    size: media.width * twelve,
+                    fontweight: FontWeight.w600,
+                    color: rota.ativo ? Colors.green : Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: media.width * 0.05),
+
+            // Grid de informações
+            _buildDetalheItem(Icons.inventory_2, 'Capacidade', '${rota.capacidadePacotes} pacotes', Colors.blue, media),
+            _buildDetalheItem(Icons.scale, 'Peso Máximo', '${rota.capacidadePesoKg} kg', Colors.orange, media),
+            _buildDetalheItem(Icons.access_time, 'Horário de Saída', rota.horarioSaidaPadrao, Colors.purple, media),
+            _buildDetalheItem(Icons.straighten, 'Distância', '${rota.distanciaKm} km', Colors.teal, media),
+            _buildDetalheItem(Icons.calendar_today, 'Dias de Operação', rota.diasSemanaFormatado, Colors.indigo, media),
+
+            SizedBox(height: media.width * 0.05),
+
+            // Botões de ação
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: media.width * 0.12,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _editarRota(rota);
+                      },
+                      icon: Icon(Icons.edit, color: _primaryColor),
+                      label: MyText(
+                        text: 'Editar',
+                        size: media.width * fourteen,
+                        fontweight: FontWeight.bold,
+                        color: _primaryColor,
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: _primaryColor),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: media.width * 0.03),
+                Expanded(
+                  child: SizedBox(
+                    height: media.width * 0.12,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _confirmarRemover(rota);
+                      },
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      label: MyText(
+                        text: 'Remover',
+                        size: media.width * fourteen,
+                        fontweight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.red),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: media.width * 0.02),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetalheItem(IconData icon, String label, String value, Color color, Size media) {
+    return Container(
+      margin: EdgeInsets.only(bottom: media.width * 0.025),
+      padding: EdgeInsets.symmetric(
+        horizontal: media.width * 0.04,
+        vertical: media.width * 0.03,
+      ),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(media.width * 0.025),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: media.width * 0.05, color: color),
+          ),
+          SizedBox(width: media.width * 0.04),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                MyText(
+                  text: label,
+                  size: media.width * twelve,
+                  color: textColor.withOpacity(0.6),
+                ),
+                MyText(
+                  text: value,
+                  size: media.width * fourteen,
+                  fontweight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     var media = MediaQuery.of(context).size;
@@ -127,7 +323,7 @@ class _MinhasRotasScreenState extends State<MinhasRotasScreen> {
         backgroundColor: page,
         body: Column(
           children: [
-            // AppBar customizado
+            // AppBar
             Container(
               padding: EdgeInsets.only(
                 left: media.width * 0.05,
@@ -136,7 +332,7 @@ class _MinhasRotasScreenState extends State<MinhasRotasScreen> {
                 bottom: media.width * 0.05,
               ),
               decoration: BoxDecoration(
-                color: theme,
+                color: _primaryColor,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
@@ -173,10 +369,31 @@ class _MinhasRotasScreenState extends State<MinhasRotasScreen> {
                       color: Colors.white,
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.add_circle, color: Colors.white),
-                    iconSize: media.width * 0.07,
-                    onPressed: _adicionarNovaRota,
+                  InkWell(
+                    onTap: _adicionarNovaRota,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: media.width * 0.03,
+                        vertical: media.width * 0.02,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add, color: Colors.white, size: media.width * 0.045),
+                          SizedBox(width: media.width * 0.01),
+                          MyText(
+                            text: 'Nova',
+                            size: media.width * twelve,
+                            fontweight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -185,11 +402,7 @@ class _MinhasRotasScreenState extends State<MinhasRotasScreen> {
             // Conteúdo
             Expanded(
               child: _isLoading
-                  ? Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(theme),
-                      ),
-                    )
+                  ? Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(_primaryColor)))
                   : _rotas.isEmpty
                       ? _buildEmptyState(media)
                       : RefreshIndicator(
@@ -227,7 +440,7 @@ class _MinhasRotasScreenState extends State<MinhasRotasScreen> {
           ),
           SizedBox(height: media.width * 0.03),
           MyText(
-            text: 'Adicione rotas para começar a receber entregas',
+            text: 'Adicione rotas para começar',
             size: media.width * fourteen,
             color: textColor.withOpacity(0.5),
             textAlign: TextAlign.center,
@@ -236,10 +449,9 @@ class _MinhasRotasScreenState extends State<MinhasRotasScreen> {
           ElevatedButton.icon(
             onPressed: _adicionarNovaRota,
             icon: const Icon(Icons.add, color: Colors.white),
-            label: const Text('Adicionar Rota'),
+            label: const Text('Adicionar Rota', style: TextStyle(color: Colors.white)),
             style: ElevatedButton.styleFrom(
-              backgroundColor: theme,
-              foregroundColor: Colors.white,
+              backgroundColor: _primaryColor,
               padding: EdgeInsets.symmetric(
                 horizontal: media.width * 0.08,
                 vertical: media.width * 0.04,
@@ -255,265 +467,113 @@ class _MinhasRotasScreenState extends State<MinhasRotasScreen> {
   }
 
   Widget _buildRotaCard(MinhaRota rota, Size media) {
-    return Container(
-      margin: EdgeInsets.only(bottom: media.width * 0.04),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+    return InkWell(
+      onTap: () => _mostrarDetalhes(rota),
+      child: Container(
+        margin: EdgeInsets.only(bottom: media.width * 0.03),
+        padding: EdgeInsets.all(media.width * 0.035),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: rota.ativo ? _primaryColor.withOpacity(0.3) : Colors.grey.withOpacity(0.3),
+            width: 1,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Cabeçalho
-          Container(
-            padding: EdgeInsets.all(media.width * 0.04),
-            decoration: BoxDecoration(
-              color: rota.ativo ? theme.withOpacity(0.1) : Colors.grey[200],
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
-              ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 3,
+              offset: const Offset(0, 1),
             ),
-            child: Row(
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Linha 1: Rota + Status
+            Row(
               children: [
-                Container(
-                  padding: EdgeInsets.all(media.width * 0.03),
-                  decoration: BoxDecoration(
-                    color: rota.ativo ? theme : Colors.grey,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.route,
-                    color: Colors.white,
-                    size: media.width * 0.06,
-                  ),
-                ),
-                SizedBox(width: media.width * 0.03),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
                       MyText(
                         text: rota.cidadeOrigemNome,
-                        size: media.width * sixteen,
-                        fontweight: FontWeight.bold,
-                        color: textColor,
-                      ),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.arrow_downward,
-                            size: media.width * 0.04,
-                            color: rota.ativo ? theme : Colors.grey,
-                          ),
-                          SizedBox(width: media.width * 0.01),
-                          MyText(
-                            text: rota.cidadeDestinoNome,
-                            size: media.width * fourteen,
-                            fontweight: FontWeight.w600,
-                            color: rota.ativo ? theme : Colors.grey,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                // Badge de status
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: media.width * 0.03,
-                    vertical: media.width * 0.01,
-                  ),
-                  decoration: BoxDecoration(
-                    color: rota.ativo ? Colors.green.withOpacity(0.2) : Colors.grey[300],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: MyText(
-                    text: rota.ativo ? 'Ativa' : 'Inativa',
-                    size: media.width * twelve,
-                    fontweight: FontWeight.w600,
-                    color: rota.ativo ? Colors.green : Colors.grey[700]!,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Informações
-          Padding(
-            padding: EdgeInsets.all(media.width * 0.04),
-            child: Column(
-              children: [
-                // Grid de info
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildInfoItem(
-                        'Capacidade',
-                        '${rota.capacidadePacotes} pacotes',
-                        Icons.inventory_2,
-                        Colors.blue,
-                        media,
-                      ),
-                    ),
-                    SizedBox(width: media.width * 0.03),
-                    Expanded(
-                      child: _buildInfoItem(
-                        'Peso Máx.',
-                        '${rota.capacidadePesoKg} kg',
-                        Icons.scale,
-                        Colors.orange,
-                        media,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: media.width * 0.03),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildInfoItem(
-                        'Horário Saída',
-                        rota.horarioSaidaPadrao,
-                        Icons.access_time,
-                        Colors.purple,
-                        media,
-                      ),
-                    ),
-                    SizedBox(width: media.width * 0.03),
-                    Expanded(
-                      child: _buildInfoItem(
-                        'Distância',
-                        '${rota.distanciaKm} km',
-                        Icons.straighten,
-                        Colors.green,
-                        media,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: media.width * 0.03),
-
-                // Dias da Semana
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(media.width * 0.03),
-                  decoration: BoxDecoration(
-                    color: Colors.indigo.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.calendar_today, size: media.width * 0.04, color: Colors.indigo),
-                          SizedBox(width: media.width * 0.02),
-                          MyText(
-                            text: 'Dias de Operação',
-                            size: media.width * twelve,
-                            color: textColor.withOpacity(0.7),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: media.width * 0.01),
-                      MyText(
-                        text: rota.diasSemanaFormatado,
                         size: media.width * fourteen,
                         fontweight: FontWeight.bold,
                         color: textColor,
+                        maxLines: 1,
+                      ),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: media.width * 0.02),
+                        child: Icon(Icons.arrow_forward, size: media.width * 0.035, color: _primaryColor),
+                      ),
+                      Expanded(
+                        child: MyText(
+                          text: rota.cidadeDestinoNome,
+                          size: media.width * fourteen,
+                          fontweight: FontWeight.bold,
+                          color: _primaryColor,
+                          maxLines: 1,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                SizedBox(height: media.width * 0.04),
-
-                // Botões de ação
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _editarRota(rota),
-                        icon: Icon(Icons.edit, size: media.width * 0.045),
-                        label: const Text('Editar'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: theme,
-                          side: BorderSide(color: theme),
-                          padding: EdgeInsets.symmetric(vertical: media.width * 0.03),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: media.width * 0.03),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _confirmarRemover(rota),
-                        icon: Icon(Icons.delete, size: media.width * 0.045),
-                        label: const Text('Remover'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: const BorderSide(color: Colors.red),
-                          padding: EdgeInsets.symmetric(vertical: media.width * 0.03),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: media.width * 0.02,
+                    vertical: media.width * 0.01,
+                  ),
+                  decoration: BoxDecoration(
+                    color: rota.ativo ? Colors.green.withOpacity(0.15) : Colors.grey.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: MyText(
+                    text: rota.ativo ? 'Ativa' : 'Inativa',
+                    size: media.width * ten,
+                    fontweight: FontWeight.w600,
+                    color: rota.ativo ? Colors.green : Colors.grey,
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
+            SizedBox(height: media.width * 0.02),
+
+            // Linha 2: Informações compactas
+            Row(
+              children: [
+                _buildCompactInfo(Icons.access_time, rota.horarioSaidaPadrao, media),
+                _buildCompactInfo(Icons.inventory_2, '${rota.capacidadePacotes}', media),
+                _buildCompactInfo(Icons.scale, '${rota.capacidadePesoKg}kg', media),
+                _buildCompactInfo(Icons.straighten, '${rota.distanciaKm}km', media),
+                Expanded(
+                  child: MyText(
+                    text: rota.diasSemanaFormatado,
+                    size: media.width * ten,
+                    color: textColor.withOpacity(0.6),
+                    maxLines: 1,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildInfoItem(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-    Size media,
-  ) {
-    return Container(
-      padding: EdgeInsets.all(media.width * 0.03),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildCompactInfo(IconData icon, String value, Size media) {
+    return Padding(
+      padding: EdgeInsets.only(right: media.width * 0.025),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: media.width * 0.04, color: color),
-              SizedBox(width: media.width * 0.02),
-              Expanded(
-                child: MyText(
-                  text: label,
-                  size: media.width * twelve,
-                  color: textColor.withOpacity(0.7),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: media.width * 0.01),
+          Icon(icon, size: media.width * 0.035, color: textColor.withOpacity(0.5)),
+          SizedBox(width: media.width * 0.01),
           MyText(
             text: value,
-            size: media.width * fourteen,
-            fontweight: FontWeight.bold,
-            color: textColor,
+            size: media.width * ten,
+            color: textColor.withOpacity(0.8),
           ),
         ],
       ),

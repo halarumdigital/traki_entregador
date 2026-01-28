@@ -80,7 +80,7 @@ class _EditarRotaDialogState extends State<EditarRotaDialog> {
         return Theme(
           data: ThemeData.light().copyWith(
             colorScheme: ColorScheme.light(
-              primary: theme,
+              primary: Colors.purple,
               onPrimary: Colors.white,
             ),
           ),
@@ -191,12 +191,12 @@ class _EditarRotaDialogState extends State<EditarRotaDialog> {
                     Container(
                       padding: EdgeInsets.all(media.width * 0.02),
                       decoration: BoxDecoration(
-                        color: theme.withOpacity(0.1),
+                        color: Colors.purple.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
                         Icons.edit,
-                        color: theme,
+                        color: Colors.purple,
                         size: media.width * 0.06,
                       ),
                     ),
@@ -232,7 +232,7 @@ class _EditarRotaDialogState extends State<EditarRotaDialog> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.toggle_on, color: theme),
+                      Icon(Icons.toggle_on, color: Colors.purple),
                       SizedBox(width: media.width * 0.03),
                       Expanded(
                         child: MyText(
@@ -249,7 +249,7 @@ class _EditarRotaDialogState extends State<EditarRotaDialog> {
                             _ativo = value;
                           });
                         },
-                        activeThumbColor: theme,
+                        activeThumbColor: Colors.purple,
                       ),
                     ],
                   ),
@@ -270,7 +270,7 @@ class _EditarRotaDialogState extends State<EditarRotaDialog> {
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: InputDecoration(
                     hintText: 'Ex: 50',
-                    prefixIcon: Icon(Icons.inventory_2, color: theme),
+                    prefixIcon: Icon(Icons.inventory_2, color: Colors.purple),
                     suffixText: 'pacotes',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -306,7 +306,7 @@ class _EditarRotaDialogState extends State<EditarRotaDialog> {
                   ],
                   decoration: InputDecoration(
                     hintText: 'Ex: 500',
-                    prefixIcon: Icon(Icons.scale, color: theme),
+                    prefixIcon: Icon(Icons.scale, color: Colors.purple),
                     suffixText: 'kg',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -346,7 +346,7 @@ class _EditarRotaDialogState extends State<EditarRotaDialog> {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.access_time, color: theme),
+                        Icon(Icons.access_time, color: Colors.purple),
                         SizedBox(width: media.width * 0.03),
                         MyText(
                           text: _formatarHorario(_horarioSaida),
@@ -394,7 +394,7 @@ class _EditarRotaDialogState extends State<EditarRotaDialog> {
                             }
                           });
                         },
-                        selectedColor: theme.withOpacity(0.7),
+                        selectedColor: Colors.purple.withOpacity(0.7),
                         backgroundColor: Colors.grey[200],
                         labelStyle: TextStyle(
                           color: diaSelecionado ? Colors.white : textColor,
@@ -445,7 +445,7 @@ class _EditarRotaDialogState extends State<EditarRotaDialog> {
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _salvar,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: theme,
+                          backgroundColor: Colors.purple,
                           padding: EdgeInsets.symmetric(vertical: media.width * 0.04),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),

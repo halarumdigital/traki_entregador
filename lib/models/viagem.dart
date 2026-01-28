@@ -20,6 +20,9 @@ class Viagem {
   final int coletasConcluidas;
   final int totalEntregas;
   final int entregasConcluidas;
+  final String distanciaKm;
+  final int tempoEstimadoMinutos;
+  final String valorEntregador;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -44,6 +47,9 @@ class Viagem {
     required this.coletasConcluidas,
     required this.totalEntregas,
     required this.entregasConcluidas,
+    required this.distanciaKm,
+    required this.tempoEstimadoMinutos,
+    required this.valorEntregador,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -82,6 +88,9 @@ class Viagem {
       coletasConcluidas: int.tryParse(json['coletas_concluidas']?.toString() ?? json['coletasConcluidas']?.toString() ?? '0') ?? 0,
       totalEntregas: int.tryParse(json['total_entregas']?.toString() ?? json['totalEntregas']?.toString() ?? '0') ?? 0,
       entregasConcluidas: int.tryParse(json['entregas_concluidas']?.toString() ?? json['entregasConcluidas']?.toString() ?? '0') ?? 0,
+      distanciaKm: json['distancia_km']?.toString() ?? json['distanciaKm']?.toString() ?? '0',
+      tempoEstimadoMinutos: int.tryParse(json['tempo_estimado_minutos']?.toString() ?? json['tempoEstimadoMinutos']?.toString() ?? '0') ?? 0,
+      valorEntregador: json['valor_entregador']?.toString() ?? json['valorEntregador']?.toString() ?? '0',
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at']) ?? DateTime.now()
           : json['createdAt'] != null
@@ -117,6 +126,9 @@ class Viagem {
       'coletasConcluidas': coletasConcluidas,
       'totalEntregas': totalEntregas,
       'entregasConcluidas': entregasConcluidas,
+      'distanciaKm': distanciaKm,
+      'tempoEstimadoMinutos': tempoEstimadoMinutos,
+      'valorEntregador': valorEntregador,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -159,6 +171,21 @@ class Viagem {
   bool get emAndamento => ['em_coleta', 'em_transito', 'em_entrega'].contains(status);
   bool get concluida => status == 'concluida';
   bool get cancelada => status == 'cancelada';
+
+  double get distanciaKmDouble => double.tryParse(distanciaKm) ?? 0.0;
+  double get valorEntregadorDouble => double.tryParse(valorEntregador) ?? 0.0;
+
+  String get tempoEstimadoFormatado {
+    if (tempoEstimadoMinutos < 60) {
+      return '$tempoEstimadoMinutos min';
+    }
+    final horas = tempoEstimadoMinutos ~/ 60;
+    final minutos = tempoEstimadoMinutos % 60;
+    if (minutos == 0) {
+      return '${horas}h';
+    }
+    return '${horas}h ${minutos}min';
+  }
 
   DateTime? get dataViagemDate {
     try {

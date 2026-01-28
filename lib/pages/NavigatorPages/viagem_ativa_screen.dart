@@ -29,6 +29,9 @@ class _ViagemAtivaScreenState extends State<ViagemAtivaScreen> {
   List<ViagemColeta> _coletas = [];
   List<EntregaViagem> _entregas = [];
 
+  // Cor principal da tela
+  static const Color _primaryColor = Colors.purple;
+
   @override
   void initState() {
     super.initState();
@@ -413,7 +416,7 @@ class _ViagemAtivaScreenState extends State<ViagemAtivaScreen> {
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: theme,
+              backgroundColor: _primaryColor,
             ),
             child: const Text('Concluir', style: TextStyle(color: Colors.white)),
           ),
@@ -467,7 +470,7 @@ class _ViagemAtivaScreenState extends State<ViagemAtivaScreen> {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Viagem'),
-          backgroundColor: theme,
+          backgroundColor: _primaryColor,
           foregroundColor: Colors.white,
         ),
         body: const Center(child: CircularProgressIndicator()),
@@ -517,7 +520,7 @@ class _ViagemAtivaScreenState extends State<ViagemAtivaScreen> {
         bottom: media.width * 0.05,
       ),
       decoration: BoxDecoration(
-        color: theme,
+        color: _primaryColor,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
@@ -589,7 +592,7 @@ class _ViagemAtivaScreenState extends State<ViagemAtivaScreen> {
               children: [
                 Icon(
                   Icons.shopping_bag,
-                  color: !_todasColetasFinalizadas ? theme : Colors.green,
+                  color: !_todasColetasFinalizadas ? _primaryColor : Colors.green,
                   size: media.width * 0.08,
                 ),
                 SizedBox(height: media.width * 0.01),
@@ -597,7 +600,7 @@ class _ViagemAtivaScreenState extends State<ViagemAtivaScreen> {
                   text: 'Coleta',
                   size: media.width * twelve,
                   fontweight: FontWeight.bold,
-                  color: !_todasColetasFinalizadas ? theme : Colors.green,
+                  color: !_todasColetasFinalizadas ? _primaryColor : Colors.green,
                 ),
                 if (!_todasColetasFinalizadas)
                   Container(
@@ -605,7 +608,7 @@ class _ViagemAtivaScreenState extends State<ViagemAtivaScreen> {
                     height: 3,
                     width: media.width * 0.15,
                     decoration: BoxDecoration(
-                      color: theme,
+                      color: _primaryColor,
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -617,7 +620,7 @@ class _ViagemAtivaScreenState extends State<ViagemAtivaScreen> {
               children: [
                 Icon(
                   Icons.local_shipping,
-                  color: _todasColetasFinalizadas ? theme : Colors.grey,
+                  color: _todasColetasFinalizadas ? _primaryColor : Colors.grey,
                   size: media.width * 0.08,
                 ),
                 SizedBox(height: media.width * 0.01),
@@ -625,7 +628,7 @@ class _ViagemAtivaScreenState extends State<ViagemAtivaScreen> {
                   text: 'Entrega',
                   size: media.width * twelve,
                   fontweight: FontWeight.bold,
-                  color: _todasColetasFinalizadas ? theme : Colors.grey,
+                  color: _todasColetasFinalizadas ? _primaryColor : Colors.grey,
                 ),
                 if (_todasColetasFinalizadas)
                   Container(
@@ -633,7 +636,7 @@ class _ViagemAtivaScreenState extends State<ViagemAtivaScreen> {
                     height: 3,
                     width: media.width * 0.15,
                     decoration: BoxDecoration(
-                      color: theme,
+                      color: _primaryColor,
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -679,7 +682,7 @@ class _ViagemAtivaScreenState extends State<ViagemAtivaScreen> {
                   text: '$coletasConcluidas/$totalColetas',
                   size: media.width * sixteen,
                   fontweight: FontWeight.bold,
-                  color: theme,
+                  color: _primaryColor,
                 ),
               ],
             ),
@@ -689,7 +692,7 @@ class _ViagemAtivaScreenState extends State<ViagemAtivaScreen> {
               child: LinearProgressIndicator(
                 value: progressoColetas,
                 backgroundColor: Colors.grey[200],
-                color: theme,
+                color: _primaryColor,
                 minHeight: 8,
               ),
             ),
@@ -707,7 +710,7 @@ class _ViagemAtivaScreenState extends State<ViagemAtivaScreen> {
                   text: '$entregasConcluidas/$totalEntregas',
                   size: media.width * sixteen,
                   fontweight: FontWeight.bold,
-                  color: theme,
+                  color: _primaryColor,
                 ),
               ],
             ),
@@ -717,7 +720,7 @@ class _ViagemAtivaScreenState extends State<ViagemAtivaScreen> {
               child: LinearProgressIndicator(
                 value: progressoEntregas,
                 backgroundColor: Colors.grey[200],
-                color: theme,
+                color: _primaryColor,
                 minHeight: 8,
               ),
             ),
@@ -781,7 +784,7 @@ class _ViagemAtivaScreenState extends State<ViagemAtivaScreen> {
       child: ElevatedButton(
         onPressed: _concluirViagem,
         style: ElevatedButton.styleFrom(
-          backgroundColor: theme,
+          backgroundColor: _primaryColor,
           padding: EdgeInsets.symmetric(vertical: media.width * 0.04),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -807,184 +810,379 @@ class _ViagemAtivaScreenState extends State<ViagemAtivaScreen> {
   Widget _buildColetaCard(ViagemColeta coleta, Size media) {
     Color statusColor;
     IconData statusIcon;
+    String statusText;
 
     if (coleta.isColetado) {
       statusColor = Colors.green;
       statusIcon = Icons.check_circle;
+      statusText = 'Coletado';
     } else if (coleta.isFalhou) {
       statusColor = Colors.red;
       statusIcon = Icons.cancel;
+      statusText = 'Falhou';
     } else if (coleta.isChegou) {
       statusColor = Colors.blue;
       statusIcon = Icons.location_on;
+      statusText = 'No local';
     } else {
       statusColor = Colors.orange;
       statusIcon = Icons.schedule;
+      statusText = 'Pendente';
     }
 
-    return Container(
-      margin: EdgeInsets.only(bottom: media.width * 0.04),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: statusColor.withOpacity(0.3),
-          width: 2,
+    return InkWell(
+      onTap: () => _mostrarDetalheColeta(coleta),
+      child: Container(
+        margin: EdgeInsets.only(bottom: media.width * 0.03),
+        padding: EdgeInsets.all(media.width * 0.04),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _primaryColor.withOpacity(0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Cabeçalho
-          Container(
-            padding: EdgeInsets.all(media.width * 0.04),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.1),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(10),
-                topRight: Radius.circular(10),
+        child: Row(
+          children: [
+            // Ícone
+            Container(
+              padding: EdgeInsets.all(media.width * 0.03),
+              decoration: BoxDecoration(
+                color: _primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.shopping_bag,
+                color: _primaryColor,
+                size: media.width * 0.06,
               ),
             ),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(media.width * 0.03),
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    borderRadius: BorderRadius.circular(8),
+            SizedBox(width: media.width * 0.035),
+
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  MyText(
+                    text: coleta.empresaNome,
+                    size: media.width * fourteen,
+                    fontweight: FontWeight.bold,
+                    color: textColor,
                   ),
-                  child: Icon(
-                    Icons.shopping_bag,
-                    color: Colors.white,
-                    size: media.width * 0.06,
+                  SizedBox(height: media.width * 0.01),
+                  MyText(
+                    text: '${coleta.quantidadePacotes} pacotes • ${coleta.pesoKg} kg',
+                    size: media.width * twelve,
+                    color: textColor.withOpacity(0.7),
                   ),
-                ),
-                SizedBox(width: media.width * 0.03),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText(
-                        text: coleta.empresaNome,
-                        size: media.width * sixteen,
-                        fontweight: FontWeight.bold,
-                        color: textColor,
-                      ),
-                      MyText(
-                        text: '${coleta.quantidadePacotes} pacotes • ${coleta.pesoKg} kg',
-                        size: media.width * twelve,
-                        color: textColor.withOpacity(0.7),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(statusIcon, color: statusColor, size: media.width * 0.06),
-              ],
+                ],
+              ),
             ),
+
+            // Status
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: media.width * 0.025,
+                vertical: media.width * 0.015,
+              ),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(statusIcon, color: statusColor, size: media.width * 0.04),
+                  SizedBox(width: media.width * 0.01),
+                  MyText(
+                    text: statusText,
+                    size: media.width * ten,
+                    fontweight: FontWeight.w600,
+                    color: statusColor,
+                  ),
+                ],
+              ),
+            ),
+
+            SizedBox(width: media.width * 0.02),
+            Icon(Icons.chevron_right, color: _primaryColor, size: media.width * 0.06),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _mostrarDetalheColeta(ViagemColeta coleta) {
+    final media = MediaQuery.of(context).size;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
           ),
-
-          // Conteúdo
-          Padding(
-            padding: EdgeInsets.all(media.width * 0.04),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Endereço
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.location_on, color: Colors.blue, size: media.width * 0.045),
-                    SizedBox(width: media.width * 0.02),
-                    Expanded(
-                      child: MyText(
-                        text: coleta.enderecoColeta,
-                        size: media.width * fourteen,
-                        color: textColor,
-                        maxLines: 3,
-                      ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Botão Abrir Mapa - centralizado no topo
+            Padding(
+              padding: EdgeInsets.only(top: media.width * 0.05),
+              child: Center(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _abrirNavegacao(coleta);
+                  },
+                  icon: Icon(Icons.map_outlined, color: Colors.white, size: media.width * 0.05),
+                  label: MyText(
+                    text: 'Abrir Mapa',
+                    size: media.width * fourteen,
+                    fontweight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primaryColor,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: media.width * 0.08,
+                      vertical: media.width * 0.035,
                     ),
-                    // Ícone de mapa para abrir navegação
-                    IconButton(
-                      onPressed: () => _abrirNavegacao(coleta),
-                      icon: Icon(
-                        Icons.navigation,
-                        color: Colors.green,
-                        size: media.width * 0.06,
-                      ),
-                      tooltip: 'Abrir navegação',
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(25),
                     ),
-                  ],
+                    elevation: 2,
+                  ),
                 ),
+              ),
+            ),
 
-                // Motivo falha (se houver)
-                if (coleta.isFalhou && coleta.motivoFalha != null) ...[
-                  SizedBox(height: media.width * 0.03),
+            SizedBox(height: media.width * 0.05),
+
+            // Linha com: Logo | Nome | WhatsApp | Cancelar
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: media.width * 0.05),
+              child: Row(
+                children: [
+                  // Logo empresa (círculo com ícone)
                   Container(
-                    padding: EdgeInsets.all(media.width * 0.03),
+                    width: media.width * 0.14,
+                    height: media.width * 0.14,
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.amber.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.amber.withOpacity(0.5), width: 2),
                     ),
-                    child: Row(
+                    child: Icon(
+                      Icons.store,
+                      color: Colors.amber[700],
+                      size: media.width * 0.07,
+                    ),
+                  ),
+                  SizedBox(width: media.width * 0.03),
+
+                  // Nome da empresa
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.error_outline, color: Colors.red, size: media.width * 0.045),
-                        SizedBox(width: media.width * 0.02),
-                        Expanded(
-                          child: MyText(
-                            text: 'Motivo: ${coleta.motivoFalha}',
-                            size: media.width * twelve,
-                            color: Colors.red[700]!,
-                          ),
+                        MyText(
+                          text: coleta.empresaNome,
+                          size: media.width * sixteen,
+                          fontweight: FontWeight.bold,
+                          color: textColor,
+                        ),
+                        Row(
+                          children: [
+                            Icon(Icons.star, color: Colors.amber, size: media.width * 0.035),
+                            SizedBox(width: media.width * 0.01),
+                            MyText(
+                              text: '5.00',
+                              size: media.width * twelve,
+                              color: textColor.withOpacity(0.7),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                ],
 
-                // Botões de ação
-                if (!coleta.isColetado && !coleta.isFalhou) ...[
-                  SizedBox(height: media.width * 0.04),
-                  if (!coleta.isChegou) ...[
-                    // Mostrar botão "Cheguei" se ainda não chegou
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () => _marcarChegueiColeta(coleta),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          padding: EdgeInsets.symmetric(vertical: media.width * 0.03),
+                  // Botão WhatsApp
+                  if (coleta.empresaTelefone != null)
+                    InkWell(
+                      onTap: () => _abrirWhatsApp(coleta.empresaTelefone!),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: media.width * 0.025,
+                          vertical: media.width * 0.015,
                         ),
-                        child: const Text('Cheguei', style: TextStyle(color: Colors.white)),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF25D366),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.phone, color: Colors.white, size: media.width * 0.035),
+                            SizedBox(width: media.width * 0.01),
+                            MyText(
+                              text: 'WhatsApp',
+                              size: media.width * ten,
+                              fontweight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ] else ...[
-                    // Mostrar botão "Retirei" se já chegou
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () => _marcarColetaRealizada(coleta),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: EdgeInsets.symmetric(vertical: media.width * 0.03),
-                        ),
-                        child: const Text('Retirei', style: TextStyle(color: Colors.white)),
-                      ),
+
+                  if (coleta.empresaTelefone != null)
+                    SizedBox(width: media.width * 0.03),
+
+                  // Cancelar
+                  InkWell(
+                    onTap: () => Navigator.pop(context),
+                    child: MyText(
+                      text: 'Cancelar',
+                      size: media.width * fourteen,
+                      fontweight: FontWeight.w600,
+                      color: Colors.red,
                     ),
-                  ],
+                  ),
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+
+            SizedBox(height: media.width * 0.05),
+
+            // Divider
+            Divider(height: 1, color: Colors.grey[300]),
+
+            // Local de Retirada
+            Padding(
+              padding: EdgeInsets.all(media.width * 0.05),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  MyText(
+                    text: 'Local de Retirada',
+                    size: media.width * twelve,
+                    color: textColor.withOpacity(0.5),
+                  ),
+                  SizedBox(height: media.width * 0.03),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(media.width * 0.02),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.location_on,
+                          color: Colors.green,
+                          size: media.width * 0.055,
+                        ),
+                      ),
+                      SizedBox(width: media.width * 0.03),
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.only(top: media.width * 0.01),
+                          child: MyText(
+                            text: coleta.enderecoColeta,
+                            size: media.width * fourteen,
+                            color: textColor,
+                            maxLines: 3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Motivo falha (se houver)
+            if (coleta.isFalhou && coleta.motivoFalha != null)
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: media.width * 0.05),
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(media.width * 0.03),
+                  margin: EdgeInsets.only(bottom: media.width * 0.03),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error_outline, color: Colors.red, size: media.width * 0.045),
+                      SizedBox(width: media.width * 0.02),
+                      Expanded(
+                        child: MyText(
+                          text: 'Motivo: ${coleta.motivoFalha}',
+                          size: media.width * twelve,
+                          color: Colors.red[700]!,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // Botão de ação
+            if (!coleta.isColetado && !coleta.isFalhou)
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  media.width * 0.05,
+                  0,
+                  media.width * 0.05,
+                  media.width * 0.05,
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      if (!coleta.isChegou) {
+                        _marcarChegueiColeta(coleta);
+                      } else {
+                        _marcarColetaRealizada(coleta);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryColor,
+                      padding: EdgeInsets.symmetric(vertical: media.width * 0.045),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: MyText(
+                      text: !coleta.isChegou ? 'CHEGUEI' : 'RETIREI',
+                      size: media.width * sixteen,
+                      fontweight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+
+            if (coleta.isColetado || coleta.isFalhou)
+              SizedBox(height: media.width * 0.03),
+          ],
+        ),
       ),
     );
   }
@@ -992,16 +1190,20 @@ class _ViagemAtivaScreenState extends State<ViagemAtivaScreen> {
   Widget _buildEntregaCard(EntregaViagem entrega, Size media) {
     Color statusColor;
     IconData statusIcon;
+    String statusText;
 
     if (entrega.isEntregue) {
       statusColor = Colors.green;
       statusIcon = Icons.check_circle;
+      statusText = 'Entregue';
     } else if (entrega.isFalha) {
       statusColor = Colors.red;
       statusIcon = Icons.cancel;
+      statusText = 'Falhou';
     } else {
       statusColor = Colors.orange;
       statusIcon = Icons.schedule;
+      statusText = 'Pendente';
     }
 
     // Se tem múltiplas paradas, mostrar card diferente
@@ -1009,213 +1211,356 @@ class _ViagemAtivaScreenState extends State<ViagemAtivaScreen> {
       return _buildEntregaComParadasCard(entrega, media, statusColor, statusIcon);
     }
 
-    // Card normal (entrega única)
-    return Container(
-      margin: EdgeInsets.only(bottom: media.width * 0.04),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: entrega.isPendente ? theme.withOpacity(0.3) : statusColor.withOpacity(0.3),
-          width: 2,
+    // Card compacto com modal
+    return InkWell(
+      onTap: () => _mostrarDetalheEntrega(entrega),
+      child: Container(
+        margin: EdgeInsets.only(bottom: media.width * 0.03),
+        padding: EdgeInsets.all(media.width * 0.04),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _primaryColor.withOpacity(0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Cabeçalho
-          Container(
-            padding: EdgeInsets.all(media.width * 0.04),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.1),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(10),
-                topRight: Radius.circular(10),
+        child: Row(
+          children: [
+            // Número da entrega
+            Container(
+              width: media.width * 0.1,
+              height: media.width * 0.1,
+              decoration: BoxDecoration(
+                color: _primaryColor,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: MyText(
+                  text: '${entrega.ordemEntrega}',
+                  size: media.width * fourteen,
+                  fontweight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: media.width * 0.12,
-                  height: media.width * 0.12,
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    shape: BoxShape.circle,
+            SizedBox(width: media.width * 0.035),
+
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  MyText(
+                    text: entrega.destinatarioNome ?? entrega.empresaNome,
+                    size: media.width * fourteen,
+                    fontweight: FontWeight.bold,
+                    color: textColor,
                   ),
-                  child: Center(
+                  SizedBox(height: media.width * 0.01),
+                  MyText(
+                    text: 'Pedido: ${entrega.numeroPedido}',
+                    size: media.width * twelve,
+                    color: textColor.withOpacity(0.7),
+                  ),
+                ],
+              ),
+            ),
+
+            // Status
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: media.width * 0.025,
+                vertical: media.width * 0.015,
+              ),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(statusIcon, color: statusColor, size: media.width * 0.04),
+                  SizedBox(width: media.width * 0.01),
+                  MyText(
+                    text: statusText,
+                    size: media.width * ten,
+                    fontweight: FontWeight.w600,
+                    color: statusColor,
+                  ),
+                ],
+              ),
+            ),
+
+            SizedBox(width: media.width * 0.02),
+            Icon(Icons.chevron_right, color: _primaryColor, size: media.width * 0.06),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _mostrarDetalheEntrega(EntregaViagem entrega) {
+    final media = MediaQuery.of(context).size;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Botão Abrir Mapa - centralizado no topo
+            Padding(
+              padding: EdgeInsets.only(top: media.width * 0.05),
+              child: Center(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _abrirNavegacaoEntrega(entrega);
+                  },
+                  icon: Icon(Icons.map_outlined, color: Colors.white, size: media.width * 0.05),
+                  label: MyText(
+                    text: 'Abrir Mapa',
+                    size: media.width * fourteen,
+                    fontweight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primaryColor,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: media.width * 0.08,
+                      vertical: media.width * 0.035,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    elevation: 2,
+                  ),
+                ),
+              ),
+            ),
+
+            SizedBox(height: media.width * 0.05),
+
+            // Linha com: Logo | Nome | WhatsApp | Cancelar
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: media.width * 0.05),
+              child: Row(
+                children: [
+                  // Logo/Número da entrega (círculo)
+                  Container(
+                    width: media.width * 0.14,
+                    height: media.width * 0.14,
+                    decoration: BoxDecoration(
+                      color: _primaryColor.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: _primaryColor.withOpacity(0.3), width: 2),
+                    ),
+                    child: Center(
+                      child: MyText(
+                        text: '${entrega.ordemEntrega}',
+                        size: media.width * eighteen,
+                        fontweight: FontWeight.bold,
+                        color: _primaryColor,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: media.width * 0.03),
+
+                  // Nome do destinatário
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        MyText(
+                          text: entrega.destinatarioNome ?? entrega.empresaNome,
+                          size: media.width * sixteen,
+                          fontweight: FontWeight.bold,
+                          color: textColor,
+                        ),
+                        MyText(
+                          text: 'Pedido: ${entrega.numeroPedido}',
+                          size: media.width * twelve,
+                          color: textColor.withOpacity(0.7),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Botão WhatsApp
+                  if (entrega.destinatarioTelefone != null)
+                    InkWell(
+                      onTap: () => _abrirWhatsApp(entrega.destinatarioTelefone!),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: media.width * 0.025,
+                          vertical: media.width * 0.015,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF25D366),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.phone, color: Colors.white, size: media.width * 0.035),
+                            SizedBox(width: media.width * 0.01),
+                            MyText(
+                              text: 'WhatsApp',
+                              size: media.width * ten,
+                              fontweight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  SizedBox(width: media.width * 0.03),
+
+                  // Cancelar
+                  InkWell(
+                    onTap: () => Navigator.pop(context),
                     child: MyText(
-                      text: '${entrega.ordemEntrega}',
-                      size: media.width * eighteen,
+                      text: 'Cancelar',
+                      size: media.width * fourteen,
+                      fontweight: FontWeight.w600,
+                      color: Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            SizedBox(height: media.width * 0.05),
+
+            // Divider
+            Divider(height: 1, color: Colors.grey[300]),
+
+            // Local de Entrega
+            Padding(
+              padding: EdgeInsets.all(media.width * 0.05),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  MyText(
+                    text: 'Local de Entrega',
+                    size: media.width * twelve,
+                    color: textColor.withOpacity(0.5),
+                  ),
+                  SizedBox(height: media.width * 0.03),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(media.width * 0.02),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.location_on,
+                          color: Colors.red,
+                          size: media.width * 0.055,
+                        ),
+                      ),
+                      SizedBox(width: media.width * 0.03),
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.only(top: media.width * 0.01),
+                          child: MyText(
+                            text: entrega.enderecoEntrega,
+                            size: media.width * fourteen,
+                            color: textColor,
+                            maxLines: 3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Motivo falha (se houver)
+            if (entrega.isFalha && entrega.motivoFalha != null)
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: media.width * 0.05),
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(media.width * 0.03),
+                  margin: EdgeInsets.only(bottom: media.width * 0.03),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error_outline, color: Colors.red, size: media.width * 0.045),
+                      SizedBox(width: media.width * 0.02),
+                      Expanded(
+                        child: MyText(
+                          text: 'Motivo: ${entrega.motivoFalha}',
+                          size: media.width * twelve,
+                          color: Colors.red[700]!,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // Botão de ação
+            if (entrega.isPendente)
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  media.width * 0.05,
+                  0,
+                  media.width * 0.05,
+                  media.width * 0.05,
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _marcarComoEntregue(entrega);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryColor,
+                      padding: EdgeInsets.symmetric(vertical: media.width * 0.045),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: MyText(
+                      text: 'ENTREGUE',
+                      size: media.width * sixteen,
                       fontweight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
                 ),
-                SizedBox(width: media.width * 0.03),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText(
-                        text: entrega.empresaNome,
-                        size: media.width * sixteen,
-                        fontweight: FontWeight.bold,
-                        color: textColor,
-                      ),
-                      MyText(
-                        text: 'Pedido: ${entrega.numeroPedido}',
-                        size: media.width * twelve,
-                        color: textColor.withOpacity(0.7),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(statusIcon, color: statusColor, size: media.width * 0.06),
-              ],
-            ),
-          ),
+              ),
 
-          // Conteúdo
-          Padding(
-            padding: EdgeInsets.all(media.width * 0.04),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Destinatário
-                if (entrega.destinatarioNome != null) ...[
-                  Row(
-                    children: [
-                      Icon(Icons.person, color: Colors.blue, size: media.width * 0.045),
-                      SizedBox(width: media.width * 0.02),
-                      Expanded(
-                        child: MyText(
-                          text: entrega.destinatarioNome!,
-                          size: media.width * fourteen,
-                          fontweight: FontWeight.w600,
-                          color: textColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: media.width * 0.02),
-                ],
-
-                // Telefone do destinatário
-                if (entrega.destinatarioTelefone != null) ...[
-                  Row(
-                    children: [
-                      Icon(Icons.phone, color: Colors.green, size: media.width * 0.045),
-                      SizedBox(width: media.width * 0.02),
-                      Expanded(
-                        child: MyText(
-                          text: entrega.destinatarioTelefone!,
-                          size: media.width * fourteen,
-                          color: textColor,
-                        ),
-                      ),
-                      InkWell(
-                        onTap: () => _abrirWhatsApp(entrega.destinatarioTelefone!),
-                        child: Container(
-                          padding: EdgeInsets.all(media.width * 0.02),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF25D366),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.message,
-                            color: Colors.white,
-                            size: media.width * 0.05,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: media.width * 0.02),
-                ],
-
-                // Endereço
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.location_on, color: Colors.red, size: media.width * 0.045),
-                    SizedBox(width: media.width * 0.02),
-                    Expanded(
-                      child: MyText(
-                        text: entrega.enderecoEntrega,
-                        size: media.width * fourteen,
-                        color: textColor,
-                        maxLines: 3,
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () => _abrirNavegacaoEntrega(entrega),
-                      child: Container(
-                        padding: EdgeInsets.all(media.width * 0.02),
-                        decoration: BoxDecoration(
-                          color: Colors.blue,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.navigation,
-                          color: Colors.white,
-                          size: media.width * 0.05,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Motivo falha (se houver)
-                if (entrega.isFalha && entrega.motivoFalha != null) ...[
-                  SizedBox(height: media.width * 0.03),
-                  Container(
-                    padding: EdgeInsets.all(media.width * 0.03),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.error_outline, color: Colors.red, size: media.width * 0.045),
-                        SizedBox(width: media.width * 0.02),
-                        Expanded(
-                          child: MyText(
-                            text: 'Motivo: ${entrega.motivoFalha}',
-                            size: media.width * twelve,
-                            color: Colors.red[700]!,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-
-                // Botões de ação (apenas para pendentes)
-                if (entrega.isPendente) ...[
-                  SizedBox(height: media.width * 0.04),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => _marcarComoEntregue(entrega),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: EdgeInsets.symmetric(vertical: media.width * 0.03),
-                      ),
-                      child: const Text('Entregue', style: TextStyle(color: Colors.white)),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
+            if (!entrega.isPendente)
+              SizedBox(height: media.width * 0.03),
+          ],
+        ),
       ),
     );
   }

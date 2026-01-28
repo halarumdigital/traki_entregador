@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../styles/app_colors.dart';
 
 /// Widget para exibir o progresso das paradas de entrega
 class StopsProgressIndicator extends StatelessWidget {
@@ -20,10 +21,10 @@ class StopsProgressIndicator extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
+        color: AppColors.primary.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.blue.shade100,
+          color: AppColors.primary.withOpacity(0.2),
           width: 1,
         ),
       ),
@@ -38,7 +39,7 @@ class StopsProgressIndicator extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.location_on,
-                    color: Colors.blue.shade700,
+                    color: AppColors.primary,
                     size: 20,
                   ),
                   const SizedBox(width: 8),
@@ -59,7 +60,7 @@ class StopsProgressIndicator extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: progress == 1.0 ? Colors.green : Colors.blue,
+                  color: progress == 1.0 ? Colors.green : AppColors.primary,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -84,7 +85,7 @@ class StopsProgressIndicator extends StatelessWidget {
               minHeight: 20,
               backgroundColor: Colors.grey.shade300,
               valueColor: AlwaysStoppedAnimation<Color>(
-                progress == 1.0 ? Colors.green : Colors.blue,
+                progress == 1.0 ? Colors.green : AppColors.primary,
               ),
             ),
           ),

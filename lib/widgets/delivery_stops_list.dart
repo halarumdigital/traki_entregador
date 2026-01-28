@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/delivery_stop.dart';
+import '../styles/app_colors.dart';
 
 /// Widget de lista de stops de uma entrega
 class DeliveryStopsList extends StatelessWidget {
@@ -81,7 +82,7 @@ class _StopCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: isCurrent
-            ? const BorderSide(color: Colors.blue, width: 2)
+            ? const BorderSide(color: AppColors.primary, width: 2)
             : BorderSide.none,
       ),
       child: InkWell(
@@ -157,7 +158,7 @@ class _StopCard extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.blue,
+                        color: AppColors.primary,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Text(
@@ -259,7 +260,7 @@ class _StopCard extends StatelessWidget {
                   _ActionButton(
                     icon: Icons.navigation,
                     label: 'Waze',
-                    color: Colors.blue,
+                    color: AppColors.primary,
                     onTap: () => _openWaze(stop.address),
                   ),
                   // WhatsApp
@@ -287,7 +288,7 @@ class _StopCard extends StatelessWidget {
                           icon: const Icon(Icons.location_on, size: 18),
                           label: const Text('Cheguei'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
+                            backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),

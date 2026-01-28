@@ -109,7 +109,9 @@ class _MyDeliveriesState extends State<MyDeliveries> {
     if (date == null || date.isEmpty) return '';
     try {
       final dateTime = DateTime.parse(date);
-      return DateFormat('dd/MM/yyyy').format(dateTime);
+      // Converter para horário local (o servidor salva em UTC)
+      final localDateTime = dateTime.toLocal();
+      return DateFormat('dd/MM/yyyy').format(localDateTime);
     } catch (e) {
       return date;
     }

@@ -10,6 +10,8 @@ class LocalStorageService {
   static const _keyDriverData = 'driver_data';
   static const _keySessionCookie = 'session_cookie';
   static const _keyProfileImagePath = 'profile_image_path';
+  static const _keyTodayDeliveries = 'today_deliveries';
+  static const _keyTodayDeliveriesDate = 'today_deliveries_date';
 
   // Salvar dados do motorista após cadastro/login
   static Future<void> saveDriverSession({
@@ -75,6 +77,38 @@ class LocalStorageService {
   // Obter caminho da imagem de perfil
   static Future<String?> getProfileImagePath() async {
     return await _storage.read(key: _keyProfileImagePath);
+  }
+
+  // Salvar entregas de hoje
+  static Future<void> saveTodayDeliveries(int count) async {
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    await Future.wait([
+      _storage.write(key: _keyTodayDeliveries, value: count.toString()),
+      _storage.write(key: _keyTodayDeliveriesDate, value: today),
+    ]);
+  }
+
+  // Obter entregas de hoje (zera automaticamente se for um novo dia)
+  static Future<int> getTodayDeliveries() async {
+    final savedDate = await _storage.read(key: _keyTodayDeliveriesDate);
+    final today = DateTime.now().toIso8601String().split('T')[0];
+
+    // Se a data salva for diferente de hoje, zera o contador
+    if (savedDate != today) {
+      await saveTodayDeliveries(0);
+      return 0;
+    }
+
+    final count = await _storage.read(key: _keyTodayDeliveries);
+    return int.tryParse(count ?? '0') ?? 0;
+  }
+
+  // Incrementar entregas de hoje
+  static Future<int> incrementTodayDeliveries() async {
+    final current = await getTodayDeliveries();
+    final newCount = current + 1;
+    await saveTodayDeliveries(newCount);
+    return newCount;
   }
 
   // Limpar sessão (logout)

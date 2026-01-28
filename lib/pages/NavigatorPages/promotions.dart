@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_driver/services/delivery_service.dart';
 import 'package:intl/intl.dart';
+import '../../styles/app_colors.dart';
 import '../../styles/styles.dart';
 import '../../widgets/widgets.dart';
 
@@ -162,8 +163,8 @@ class _PromotionsPageState extends State<PromotionsPage> {
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: [
-                                        Colors.orange.shade400,
-                                        Colors.deepOrange.shade600,
+                                        AppColors.primary.withOpacity(0.8),
+                                        AppColors.primary,
                                       ],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
@@ -171,7 +172,7 @@ class _PromotionsPageState extends State<PromotionsPage> {
                                     borderRadius: BorderRadius.circular(12),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.orange.withOpacity(0.3),
+                                        color: AppColors.primary.withOpacity(0.3),
                                         blurRadius: 8,
                                         offset: const Offset(0, 4),
                                       ),
@@ -349,8 +350,7 @@ class _PromotionsPageState extends State<PromotionsPage> {
                                                     Icon(
                                                       Icons.flag,
                                                       size: media.width * 0.04,
-                                                      color: Colors
-                                                          .deepOrange.shade600,
+                                                      color: AppColors.primary,
                                                     ),
                                                     SizedBox(
                                                         width:
@@ -360,8 +360,7 @@ class _PromotionsPageState extends State<PromotionsPage> {
                                                       style: TextStyle(
                                                         fontSize:
                                                             media.width * 0.035,
-                                                        color: Colors.deepOrange
-                                                            .shade600,
+                                                        color: AppColors.primary,
                                                         fontWeight:
                                                             FontWeight.bold,
                                                       ),

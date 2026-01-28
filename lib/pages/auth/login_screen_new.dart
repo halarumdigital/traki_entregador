@@ -6,7 +6,7 @@ import '../login/register_step1_personal.dart';
 import 'forgot_password_email_screen.dart';
 import '../../functions/functions.dart';
 import '../../services/local_storage_service.dart';
-import '../home/home_screen_new.dart';
+import '../home_simple.dart';
 
 /// Nova tela de Login baseada no design do Figma
 /// Com tema roxo (#8719CA)
@@ -103,7 +103,7 @@ class _LoginScreenNewState extends State<LoginScreenNew> {
           if (mounted) {
             Navigator.pushAndRemoveUntil(
               context,
-              MaterialPageRoute(builder: (context) => const HomeScreenNew()),
+              MaterialPageRoute(builder: (context) => const HomeSimple()),
               (route) => false,
             );
           }

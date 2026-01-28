@@ -53,6 +53,7 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
   bool _isLoadingBalance = false; // NOVO: loading da carteira
   int _notificationCount = 0; // Contador de notificações novas
   DateTime? _lastNotificationCheck; // Última vez que viu notificações
+  int _todayDeliveries = 0; // Entregas de hoje (zera à meia noite)
 
   @override
   void initState() {
@@ -64,6 +65,7 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
     _loadAvailableDeliveries();
     _loadWalletBalance(); // NOVO: carregar saldo da carteira
     _loadNotificationCount(); // Carregar contador de notificações
+    _loadTodayDeliveries(); // Carregar entregas de hoje
     _startLocationUpdates();
     _startBlockStatusCheck();
   }
@@ -345,6 +347,104 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _loadTodayDeliveries() async {
+    try {
+      debugPrint('📅 Buscando entregas de hoje via API...');
+
+      // Obter data de hoje no formato YYYY-MM-DD (usando horário local)
+      final now = DateTime.now();
+      final today = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+      // Também pegar ontem para compensar possíveis diferenças de timezone do servidor
+      final yesterday = now.subtract(const Duration(days: 1));
+      final yesterdayStr = '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
+
+      debugPrint('📅 Data de hoje (local): $today');
+      debugPrint('📅 Data de ontem (local): $yesterdayStr');
+      debugPrint('📅 DateTime.now(): $now');
+
+      // Usar as estatísticas de comissão que já têm currentWeekDeliveries
+      // Se hoje é segunda-feira (início da semana), currentWeekDeliveries = entregas de hoje
+      final weekday = now.weekday; // 1 = segunda, 7 = domingo
+      debugPrint('📅 Dia da semana: $weekday (1=seg, 7=dom)');
+
+      // Buscar histórico do dia de hoje
+      final response = await DeliveryService.getDeliveryHistory(
+        startDate: today,
+        endDate: today,
+      );
+
+      debugPrint('📦 Resposta do getDeliveryHistory (hoje): $response');
+
+      int todayCount = 0;
+
+      if (response != null) {
+        // Verificar se tem 'total' direto
+        if (response['total'] != null && response['total'] > 0) {
+          todayCount = response['total'] as int;
+          debugPrint('📊 Total encontrado (hoje): $todayCount');
+        }
+        // Verificar se tem 'grouped' e contar
+        else if (response['grouped'] != null) {
+          final grouped = response['grouped'] as List;
+          for (var group in grouped) {
+            final deliveries = group['deliveries'] as List?;
+            if (deliveries != null) {
+              todayCount += deliveries.length;
+            }
+          }
+          debugPrint('📊 Total contado de grouped (hoje): $todayCount');
+        }
+      }
+
+      // Se não encontrou nada para hoje, pode ser problema de timezone
+      // O servidor pode estar em UTC e salvando entregas com data +1
+      // Então vamos usar currentWeekDeliveries se for segunda-feira
+      // ou buscar entregas de "amanhã" segundo a hora local (que é "hoje" no servidor UTC)
+      if (todayCount == 0) {
+        debugPrint('⚠️ Nenhuma entrega encontrada para hoje, verificando timezone...');
+
+        // Buscar entregas de "amanhã" local (que pode ser "hoje" no servidor UTC)
+        final tomorrow = now.add(const Duration(days: 1));
+        final tomorrowStr = '${tomorrow.year}-${tomorrow.month.toString().padLeft(2, '0')}-${tomorrow.day.toString().padLeft(2, '0')}';
+        debugPrint('📅 Buscando também data $tomorrowStr (compensação UTC)...');
+
+        final responseTomorrow = await DeliveryService.getDeliveryHistory(
+          startDate: tomorrowStr,
+          endDate: tomorrowStr,
+        );
+
+        debugPrint('📦 Resposta para $tomorrowStr: $responseTomorrow');
+
+        if (responseTomorrow != null) {
+          if (responseTomorrow['total'] != null && responseTomorrow['total'] > 0) {
+            todayCount = responseTomorrow['total'] as int;
+            debugPrint('📊 Total encontrado (UTC+1): $todayCount');
+          } else if (responseTomorrow['grouped'] != null) {
+            final grouped = responseTomorrow['grouped'] as List;
+            for (var group in grouped) {
+              final deliveries = group['deliveries'] as List?;
+              if (deliveries != null) {
+                todayCount += deliveries.length;
+              }
+            }
+            debugPrint('📊 Total contado de grouped (UTC+1): $todayCount');
+          }
+        }
+      }
+
+      debugPrint('✅ Entregas de hoje (final): $todayCount');
+
+      if (mounted) {
+        setState(() {
+          _todayDeliveries = todayCount;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao carregar entregas de hoje: $e');
+    }
+  }
+
   Future<void> _markNotificationsAsRead() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('lastNotificationCheck', DateTime.now().millisecondsSinceEpoch);
@@ -447,6 +547,7 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
       _loadAvailableDeliveries(),
       _loadNotificationCount(),
       _loadWalletBalance(),
+      _loadTodayDeliveries(),
     ]);
 
     debugPrint('✅ Dados atualizados com sucesso!');
@@ -2150,45 +2251,45 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
     final int currentMonthDeliveries = _commissionStats?['currentMonthDeliveries'] ?? 0;
     final int currentWeekDeliveries = _commissionStats?['currentWeekDeliveries'] ?? 0;
 
-    debugPrint('📊 Estatísticas - Mês: $currentMonthDeliveries, Semana: $currentWeekDeliveries');
+    debugPrint('📊 Estatísticas - Hoje: $_todayDeliveries, Semana: $currentWeekDeliveries, Mês: $currentMonthDeliveries');
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          // Card de entregas da semana
+          // Card de entregas de hoje
           Expanded(
             child: Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF3E0),
+                color: const Color(0xFFE8F5E9),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
                   const Icon(
-                    Icons.local_shipping,
-                    color: Colors.orange,
-                    size: 24,
+                    Icons.today,
+                    color: Colors.green,
+                    size: 20,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Entregas essa\nsemana',
+                          'Entregas\nhoje',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             color: AppColors.textSecondary,
                             height: 1.2,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '$currentWeekDeliveries',
+                          '$_todayDeliveries',
                           style: const TextStyle(
-                            fontSize: 24,
+                            fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
                           ),
@@ -2200,11 +2301,56 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
+          // Card de entregas da semana
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF3E0),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.local_shipping,
+                    color: Colors.orange,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Entregas\nsemana',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '$currentWeekDeliveries',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
           // Card de entregas do mês
           Expanded(
             child: Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: const Color(0xFFE8EAF6),
                 borderRadius: BorderRadius.circular(12),
@@ -2214,17 +2360,17 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                   const Icon(
                     Icons.calendar_month,
                     color: Colors.indigo,
-                    size: 24,
+                    size: 20,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Entregas esse\nmês',
+                          'Entregas\nmês',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             color: AppColors.textSecondary,
                             height: 1.2,
                           ),
@@ -2233,7 +2379,7 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                         Text(
                           '$currentMonthDeliveries',
                           style: const TextStyle(
-                            fontSize: 24,
+                            fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
                           ),

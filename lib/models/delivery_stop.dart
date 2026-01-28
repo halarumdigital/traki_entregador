@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../styles/app_colors.dart';
 
 /// Modelo para representar uma parada de entrega
 class DeliveryStop {
@@ -108,7 +109,7 @@ class DeliveryStop {
       case 'pending':
         return Colors.orange;
       case 'arrived':
-        return Colors.blue;
+        return AppColors.primary;
       case 'completed':
         return Colors.green;
       case 'skipped':

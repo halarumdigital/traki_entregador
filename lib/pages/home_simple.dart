@@ -357,82 +357,59 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
       final now = DateTime.now();
       final today = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
-      // Também pegar ontem para compensar possíveis diferenças de timezone do servidor
-      final yesterday = now.subtract(const Duration(days: 1));
-      final yesterdayStr = '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
-
       debugPrint('📅 Data de hoje (local): $today');
-      debugPrint('📅 Data de ontem (local): $yesterdayStr');
       debugPrint('📅 DateTime.now(): $now');
 
-      // Usar as estatísticas de comissão que já têm currentWeekDeliveries
-      // Se hoje é segunda-feira (início da semana), currentWeekDeliveries = entregas de hoje
-      final weekday = now.weekday; // 1 = segunda, 7 = domingo
-      debugPrint('📅 Dia da semana: $weekday (1=seg, 7=dom)');
+      // Buscar histórico - pegar um range maior para compensar timezone
+      // (ontem até amanhã no UTC pode conter entregas de hoje no horário local)
+      final yesterday = now.subtract(const Duration(days: 1));
+      final yesterdayStr = '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
+      final tomorrow = now.add(const Duration(days: 1));
+      final tomorrowStr = '${tomorrow.year}-${tomorrow.month.toString().padLeft(2, '0')}-${tomorrow.day.toString().padLeft(2, '0')}';
 
-      // Buscar histórico do dia de hoje
       final response = await DeliveryService.getDeliveryHistory(
-        startDate: today,
-        endDate: today,
+        startDate: yesterdayStr,
+        endDate: tomorrowStr,
       );
 
-      debugPrint('📦 Resposta do getDeliveryHistory (hoje): $response');
+      debugPrint('📦 Resposta do getDeliveryHistory ($yesterdayStr a $tomorrowStr): ${response?.keys}');
 
       int todayCount = 0;
 
-      if (response != null) {
-        // Verificar se tem 'total' direto
-        if (response['total'] != null && response['total'] > 0) {
-          todayCount = response['total'] as int;
-          debugPrint('📊 Total encontrado (hoje): $todayCount');
-        }
-        // Verificar se tem 'grouped' e contar
-        else if (response['grouped'] != null) {
-          final grouped = response['grouped'] as List;
-          for (var group in grouped) {
-            final deliveries = group['deliveries'] as List?;
-            if (deliveries != null) {
-              todayCount += deliveries.length;
+      if (response != null && response['grouped'] != null) {
+        final grouped = response['grouped'] as List;
+
+        // Verificar cada entrega individualmente pelo completedAt convertido para horário local
+        for (var group in grouped) {
+          final deliveries = group['deliveries'] as List?;
+          if (deliveries == null) continue;
+
+          for (var delivery in deliveries) {
+            final completedAtStr = delivery['completedAt'] as String?;
+            if (completedAtStr == null) continue;
+
+            try {
+              // Converter UTC para horário local
+              final completedAtUtc = DateTime.parse(completedAtStr);
+              final completedAtLocal = completedAtUtc.toLocal();
+              final completedDateLocal = '${completedAtLocal.year}-${completedAtLocal.month.toString().padLeft(2, '0')}-${completedAtLocal.day.toString().padLeft(2, '0')}';
+
+              debugPrint('📅 Entrega ${delivery['requestNumber']}: completedAt UTC=$completedAtStr -> Local=$completedDateLocal (esperado: $today)');
+
+              if (completedDateLocal == today) {
+                todayCount++;
+                debugPrint('✅ Contando entrega ${delivery['requestNumber']} para hoje');
+              }
+            } catch (e) {
+              debugPrint('⚠️ Erro ao parsear completedAt: $completedAtStr - $e');
             }
           }
-          debugPrint('📊 Total contado de grouped (hoje): $todayCount');
         }
       }
 
-      // Se não encontrou nada para hoje, pode ser problema de timezone
-      // O servidor pode estar em UTC e salvando entregas com data +1
-      // Então vamos usar currentWeekDeliveries se for segunda-feira
-      // ou buscar entregas de "amanhã" segundo a hora local (que é "hoje" no servidor UTC)
+      // Log se não encontrou entregas hoje
       if (todayCount == 0) {
-        debugPrint('⚠️ Nenhuma entrega encontrada para hoje, verificando timezone...');
-
-        // Buscar entregas de "amanhã" local (que pode ser "hoje" no servidor UTC)
-        final tomorrow = now.add(const Duration(days: 1));
-        final tomorrowStr = '${tomorrow.year}-${tomorrow.month.toString().padLeft(2, '0')}-${tomorrow.day.toString().padLeft(2, '0')}';
-        debugPrint('📅 Buscando também data $tomorrowStr (compensação UTC)...');
-
-        final responseTomorrow = await DeliveryService.getDeliveryHistory(
-          startDate: tomorrowStr,
-          endDate: tomorrowStr,
-        );
-
-        debugPrint('📦 Resposta para $tomorrowStr: $responseTomorrow');
-
-        if (responseTomorrow != null) {
-          if (responseTomorrow['total'] != null && responseTomorrow['total'] > 0) {
-            todayCount = responseTomorrow['total'] as int;
-            debugPrint('📊 Total encontrado (UTC+1): $todayCount');
-          } else if (responseTomorrow['grouped'] != null) {
-            final grouped = responseTomorrow['grouped'] as List;
-            for (var group in grouped) {
-              final deliveries = group['deliveries'] as List?;
-              if (deliveries != null) {
-                todayCount += deliveries.length;
-              }
-            }
-            debugPrint('📊 Total contado de grouped (UTC+1): $todayCount');
-          }
-        }
+        debugPrint('ℹ️ Nenhuma entrega concluída hoje ($today)');
       }
 
       debugPrint('✅ Entregas de hoje (final): $todayCount');

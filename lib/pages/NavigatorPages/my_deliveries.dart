@@ -35,16 +35,35 @@ class _MyDeliveriesState extends State<MyDeliveries> {
     });
 
     try {
+      // Compensar timezone: adicionar 1 dia ao endDate para garantir que
+      // entregas feitas tarde da noite (que ficam no dia seguinte em UTC) apareçam
+      String? startDateStr = _startDate?.toIso8601String().split('T')[0];
+      String? endDateStr;
+
+      if (_endDate != null) {
+        // Adicionar 1 dia ao endDate para compensar timezone UTC
+        final adjustedEndDate = _endDate!.add(const Duration(days: 1));
+        endDateStr = adjustedEndDate.toIso8601String().split('T')[0];
+      }
+
+      debugPrint('📅 Buscando entregas: startDate=$startDateStr, endDate=$endDateStr');
+
       final result = await DeliveryService.getDeliveryHistory(
-        startDate: _startDate?.toIso8601String().split('T')[0],
-        endDate: _endDate?.toIso8601String().split('T')[0],
+        startDate: startDateStr,
+        endDate: endDateStr,
         companyId: _selectedCompanyId,
         groupBy: 'day',
       );
 
       if (result != null) {
+        debugPrint('📦 Resultado da API: ${result['total']} entregas');
         final response = DeliveryHistoryResponse.fromJson(result);
         final allDeliveries = response.allDeliveries;
+
+        debugPrint('📦 Entregas parseadas: ${allDeliveries.length}');
+        for (var d in allDeliveries) {
+          debugPrint('  - ${d.requestNumber}: deliveredAt=${d.deliveredAt}');
+        }
 
         setState(() {
           _historyResponse = response;
@@ -52,12 +71,13 @@ class _MyDeliveriesState extends State<MyDeliveries> {
           _isLoading = false;
         });
       } else {
+        debugPrint('❌ Resultado da API é null');
         setState(() {
           _isLoading = false;
         });
       }
     } catch (e) {
-      debugPrint('Erro ao carregar entregas: $e');
+      debugPrint('❌ Erro ao carregar entregas: $e');
       setState(() {
         _isLoading = false;
       });
@@ -397,6 +417,20 @@ class _MyDeliveriesState extends State<MyDeliveries> {
 
     final groupedDeliveries = _groupDeliveriesByDate();
     final dates = groupedDeliveries.keys.toList();
+
+    // Ordenar datas em ordem decrescente (mais recente primeiro)
+    // O formato é dd/MM/yyyy, então precisamos converter para comparar
+    dates.sort((a, b) {
+      try {
+        final partsA = a.split('/');
+        final partsB = b.split('/');
+        final dateA = DateTime(int.parse(partsA[2]), int.parse(partsA[1]), int.parse(partsA[0]));
+        final dateB = DateTime(int.parse(partsB[2]), int.parse(partsB[1]), int.parse(partsB[0]));
+        return dateB.compareTo(dateA); // Decrescente
+      } catch (e) {
+        return 0;
+      }
+    });
 
     return ListView.builder(
       padding: EdgeInsets.all(media.width * 0.05),

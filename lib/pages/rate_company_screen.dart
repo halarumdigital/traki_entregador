@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/delivery_service.dart';
-import '../styles/styles.dart';
-import '../widgets/widgets.dart';
 
 class RateCompanyScreen extends StatefulWidget {
   final String deliveryId;
@@ -20,6 +19,13 @@ class RateCompanyScreen extends StatefulWidget {
 class _RateCompanyScreenState extends State<RateCompanyScreen> {
   int _selectedRating = 0;
   bool _isSubmitting = false;
+
+  // Cores do Figma
+  static const Color _backgroundColor = Color(0xFFF9F9FF);
+  static const Color _darkTextColor = Color(0xFF1C2340);
+  static const Color _grayTextColor = Color(0xFF8A8D9F);
+  static const Color _buttonColor = Color(0xFF8719CA);
+  static const Color _starActiveColor = Color(0xFFFFD700);
 
   Future<void> _submitRating() async {
     if (_selectedRating == 0) {
@@ -83,229 +89,209 @@ class _RateCompanyScreenState extends State<RateCompanyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    var media = MediaQuery.of(context).size;
+    final media = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: page,
+      backgroundColor: _backgroundColor,
       body: SafeArea(
         child: Column(
           children: [
-            // Header
-            Container(
-              padding: EdgeInsets.all(media.width * 0.05),
-              color: theme,
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.business,
-                    color: Colors.white,
-                    size: media.width * 0.08,
+            // Header - Figma: Roboto Bold 22px, #1C2340
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: media.width * 0.05,
+                vertical: 16,
+              ),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Entrega em Andamento',
+                  style: GoogleFonts.roboto(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: _darkTextColor,
                   ),
-                  SizedBox(width: media.width * 0.03),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        MyText(
-                          text: 'Avalie a empresa',
-                          size: media.width * twenty,
-                          fontweight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                        MyText(
-                          text: 'Sua opinião é importante',
-                          size: media.width * fourteen,
-                          color: Colors.white.withOpacity(0.9),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
 
-            // Content
+            // Conteúdo scrollável
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.all(media.width * 0.05),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    SizedBox(height: media.width * 0.05),
-
-                    // Ícone de sucesso
-                    Container(
-                      width: media.width * 0.25,
-                      height: media.width * 0.25,
-                      decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.check_circle,
-                        color: Colors.green,
-                        size: media.width * 0.15,
-                      ),
-                    ),
-
-                    SizedBox(height: media.width * 0.05),
-
-                    // Título
-                    MyText(
-                      text: 'Entrega Concluída!',
-                      size: media.width * twentyfour,
-                      fontweight: FontWeight.bold,
-                      color: textColor,
-                      textAlign: TextAlign.center,
-                    ),
-
-                    SizedBox(height: media.width * 0.03),
-
-                    // Nome da empresa
-                    Container(
+                    // Ilustração do Figma
+                    Padding(
                       padding: EdgeInsets.symmetric(
                         horizontal: media.width * 0.05,
-                        vertical: media.width * 0.03,
+                        vertical: 20,
+                      ),
+                      child: Image.asset(
+                        'assets/images/delivery_success.png',
+                        width: media.width * 0.8,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Texto de sucesso - Figma: Roboto Bold 20px, rgba(0,0,0,0.9)
+                    Text(
+                      'Entrega finalizada com\nsucesso!',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.roboto(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black.withValues(alpha: 0.9),
+                        height: 1.3,
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Subtexto - Figma: Roboto 400 14px, #8A8D9F
+                    Text(
+                      'Deixe sua avaliação sobre a empresa',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.roboto(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: _grayTextColor,
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // Card de avaliação - Figma: border-radius 10px, padding 22px 32px
+                    Container(
+                      margin: EdgeInsets.symmetric(horizontal: media.width * 0.05),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 22,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withValues(alpha: 0.08),
                             blurRadius: 10,
                             offset: const Offset(0, 2),
                           ),
                         ],
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                      child: Column(
                         children: [
-                          Icon(
-                            Icons.store,
-                            color: theme,
-                            size: media.width * 0.06,
-                          ),
-                          SizedBox(width: media.width * 0.02),
-                          Flexible(
-                            child: MyText(
-                              text: widget.companyName,
-                              size: media.width * eighteen,
-                              fontweight: FontWeight.w600,
-                              color: textColor,
-                              textAlign: TextAlign.center,
+                          Text(
+                            'O que você achou da empresa?',
+                            style: GoogleFonts.roboto(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: _darkTextColor,
                             ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Escolha de 1 a 5 estrelas para classificar',
+                            style: GoogleFonts.roboto(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                              color: _grayTextColor,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Estrelas
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: List.generate(5, (index) {
+                              final starNumber = index + 1;
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedRating = starNumber;
+                                  });
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                  ),
+                                  child: Icon(
+                                    _selectedRating >= starNumber
+                                        ? Icons.star_rounded
+                                        : Icons.star_outline_rounded,
+                                    color: _selectedRating >= starNumber
+                                        ? _starActiveColor
+                                        : Colors.grey.shade300,
+                                    size: 40,
+                                  ),
+                                ),
+                              );
+                            }),
                           ),
                         ],
                       ),
                     ),
 
-                    SizedBox(height: media.width * 0.08),
-
-                    // Pergunta
-                    MyText(
-                      text: 'Como foi sua experiência com esta empresa?',
-                      size: media.width * sixteen,
-                      color: textColor,
-                      textAlign: TextAlign.center,
-                    ),
-
-                    SizedBox(height: media.width * 0.06),
-
-                    // Estrelas de avaliação
-                    Container(
-                      padding: EdgeInsets.all(media.width * 0.05),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
-                            blurRadius: 15,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(5, (index) {
-                          final starNumber = index + 1;
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _selectedRating = starNumber;
-                              });
-                            },
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: media.width * 0.015,
-                              ),
-                              child: Icon(
-                                _selectedRating >= starNumber
-                                    ? Icons.star
-                                    : Icons.star_border,
-                                color: Colors.amber,
-                                size: media.width * 0.12,
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-                    ),
-
-                    // Texto da avaliação
-                    if (_selectedRating > 0) ...[
-                      SizedBox(height: media.width * 0.04),
-                      MyText(
-                        text: _getRatingText(_selectedRating),
-                        size: media.width * sixteen,
-                        fontweight: FontWeight.w600,
-                        color: _getRatingColor(_selectedRating),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-
-                    SizedBox(height: media.width * 0.1),
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
             ),
 
-            // Botões de ação
-            Container(
-              padding: EdgeInsets.all(media.width * 0.05),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
+            // Botão de enviar - Figma: #8719CA, border-radius 25px, Roboto Bold 16px
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: media.width * 0.05,
+                vertical: 16,
               ),
               child: Column(
                 children: [
-                  // Botão Enviar Avaliação
-                  Button(
-                    onTap: _isSubmitting ? null : _submitRating,
-                    text: _isSubmitting ? 'Enviando...' : 'Enviar Avaliação',
-                    color: _selectedRating > 0 ? theme : Colors.grey,
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isSubmitting ? null : _submitRating,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _buttonColor,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: _buttonColor.withValues(alpha: 0.6),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              'Enviar Avaliação',
+                              style: GoogleFonts.roboto(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                    ),
                   ),
-
-                  SizedBox(height: media.width * 0.03),
-
-                  // Botão Pular
+                  const SizedBox(height: 12),
                   TextButton(
                     onPressed: _isSubmitting
                         ? null
                         : () {
                             Navigator.pop(context, false);
                           },
-                    child: MyText(
-                      text: 'Pular avaliação',
-                      size: media.width * fourteen,
-                      color: Colors.grey,
+                    child: Text(
+                      'Pular avaliação',
+                      style: GoogleFonts.roboto(
+                        fontSize: 14,
+                        color: _grayTextColor,
+                      ),
                     ),
                   ),
                 ],
@@ -315,32 +301,5 @@ class _RateCompanyScreenState extends State<RateCompanyScreen> {
         ),
       ),
     );
-  }
-
-  String _getRatingText(int rating) {
-    switch (rating) {
-      case 1:
-        return 'Muito insatisfeito';
-      case 2:
-        return 'Insatisfeito';
-      case 3:
-        return 'Regular';
-      case 4:
-        return 'Satisfeito';
-      case 5:
-        return 'Muito satisfeito';
-      default:
-        return '';
-    }
-  }
-
-  Color _getRatingColor(int rating) {
-    if (rating <= 2) {
-      return Colors.red;
-    } else if (rating == 3) {
-      return Colors.orange;
-    } else {
-      return Colors.green;
-    }
   }
 }

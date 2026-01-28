@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../styles/styles.dart';
 import '../services/delivery_service.dart';
@@ -23,14 +24,13 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
   StreamSubscription<String>? _cancelSubscription;
   StreamSubscription<Map<String, String>>? _takenSubscription;
   late final String? _requestId;
+  late final int _initialSeconds;
 
-  // Detectar se tem múltiplas paradas baseado no dropoffAddress
   bool _hasMultipleStops() {
     final dropoffAddress = widget.data['dropoffAddress'] ?? '';
     return dropoffAddress.contains(' | ');
   }
 
-  // Extrair apenas o primeiro endereço de entrega e remover nome do cliente
   String _getFirstStopAddress() {
     final dropoffAddress = widget.data['dropoffAddress'] ?? '';
     String firstAddress;
@@ -41,29 +41,19 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
       firstAddress = dropoffAddress;
     }
 
-    // Remover nome do cliente [nome]
     firstAddress = firstAddress.replaceFirst(RegExp(r'^\[.*?\]\s*'), '');
-
-    // Remover WhatsApp [WhatsApp: xxx]
     firstAddress = firstAddress.replaceAll(RegExp(r'\[WhatsApp:\s*[^\]]+\]\s*'), '');
-
-    // Remover referência [Ref: xxx]
     firstAddress = firstAddress.replaceAll(RegExp(r'\[Ref:\s*[^\]]+\]\s*'), '');
-
-    // Limpar endereço - remover cidade, estado e país
     firstAddress = firstAddress
         .replaceAll(RegExp(r',?\s*Brasil$', caseSensitive: false), '')
         .replaceAll(RegExp(r',?\s*SC\b', caseSensitive: false), '')
         .replaceAll(RegExp(r',?\s*Joaçaba\s*-?\s*', caseSensitive: false), '')
         .trim();
 
-    // Remover padrão [nome] do início do endereço (caso ainda tenha algum)
-    // Exemplo: "[gilliard1] Rua..." -> "Rua..."
     final regex = RegExp(r'^\[.*?\]\s*');
     return firstAddress.replaceAll(regex, '');
   }
 
-  // Contar número de paradas
   int _getStopsCount() {
     final dropoffAddress = widget.data['dropoffAddress'] ?? '';
     if (dropoffAddress.contains(' | ')) {
@@ -75,12 +65,8 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
   @override
   void initState() {
     super.initState();
-    debugPrint('🚨 ===== MODAL DE ENTREGA ABERTO =====');
-    debugPrint('📦 Dados recebidos no modal: ${widget.data}');
-    debugPrint('🔍 needs_return: ${widget.data['needs_return']}');
-    debugPrint('🔍 needsReturn: ${widget.data['needsReturn']}');
-    debugPrint('🛣️ Múltiplas paradas: ${_hasMultipleStops()}');
-    debugPrint('🛣️ Número de paradas: ${_getStopsCount()}');
+    debugPrint('===== MODAL DE ENTREGA ABERTO =====');
+    debugPrint('Dados recebidos no modal: ${widget.data}');
 
     _requestId = _resolveRequestId(widget.data);
     final cancelledBeforeInit = _requestId != null &&
@@ -118,83 +104,41 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
     return null;
   }
 
-  /// Escutar eventos de cancelamento de entregas
   void _listenForCancellation() {
-    debugPrint('[Cancelamento] Escutando entrega: ${_requestId ?? 'desconhecido'}');
-
     _cancelSubscription = NotificationService.onDeliveryCancelled.listen((cancelledRequestId) {
       final currentRequestId = _requestId;
-
-      debugPrint('[Cancelamento] Evento recebido para requestId: $cancelledRequestId');
-      debugPrint('[Cancelamento] RequestId atual do modal: $currentRequestId');
-
-      if (currentRequestId == null) {
-        debugPrint('[Cancelamento] RequestId do modal indefinido. Fechando por segurança.');
+      if (currentRequestId == null || cancelledRequestId == currentRequestId) {
+        NotificationService.consumePendingCancellation(currentRequestId ?? '');
         _handleDeliveryCancelled();
-        return;
-      }
-
-      if (cancelledRequestId == currentRequestId) {
-        NotificationService.consumePendingCancellation(currentRequestId);
-        debugPrint('[Cancelamento] IDs coincidem. Fechando modal.');
-        _handleDeliveryCancelled();
-      } else {
-        debugPrint('[Cancelamento] Evento não corresponde a esta entrega.');
       }
     });
   }
 
-  /// Escutar eventos de entrega aceita por outro motorista
   void _listenForDeliveryTaken() {
-    debugPrint('[Entrega Aceita] Escutando entrega: ${_requestId ?? 'desconhecido'}');
-
     _takenSubscription = NotificationService.onDeliveryTaken.listen((data) {
       final takenRequestId = data['requestId'];
       final takenRequestNumber = data['requestNumber'];
       final currentRequestId = _requestId;
 
-      debugPrint('[Entrega Aceita] Evento recebido para requestId: $takenRequestId');
-      debugPrint('[Entrega Aceita] RequestId atual do modal: $currentRequestId');
-
-      if (currentRequestId == null) {
-        debugPrint('[Entrega Aceita] RequestId do modal indefinido. Fechando por segurança.');
+      if (currentRequestId == null || takenRequestId == currentRequestId) {
         _handleDeliveryTaken(takenRequestNumber);
-        return;
-      }
-
-      if (takenRequestId == currentRequestId) {
-        debugPrint('[Entrega Aceita] IDs coincidem. Fechando modal.');
-        _handleDeliveryTaken(takenRequestNumber);
-      } else {
-        debugPrint('[Entrega Aceita] Evento não corresponde a esta entrega.');
       }
     });
   }
 
-  /// Handler quando a entrega é aceita por outro motorista
   void _handleDeliveryTaken(String? requestNumber) {
-    // Cancelar timer
     _timer?.cancel();
-
-    // Parar som
     _audioPlayer.stop();
 
-    // Fechar modal
     if (mounted) {
       Navigator.of(context).pop();
-
-      // Mostrar snackbar informando
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
-            children: [
-              const Icon(Icons.info_outline, color: Colors.white),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'A entrega foi aceita por outro entregador',
-                ),
-              ),
+            children: const [
+              Icon(Icons.info_outline, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(child: Text('A entrega foi aceita por outro entregador')),
             ],
           ),
           backgroundColor: Colors.orange,
@@ -204,28 +148,19 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
     }
   }
 
-  /// Handler quando a entrega é cancelada
   void _handleDeliveryCancelled() {
-    // Cancelar timer
     _timer?.cancel();
-
-    // Parar som
     _audioPlayer.stop();
 
-    // Fechar modal
     if (mounted) {
       Navigator.of(context).pop();
-
-      // Mostrar snackbar informando
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: const [
               Icon(Icons.cancel, color: Colors.white),
               SizedBox(width: 12),
-              Expanded(
-                child: Text('Esta entrega foi cancelada pela empresa'),
-              ),
+              Expanded(child: Text('Esta entrega foi cancelada pela empresa')),
             ],
           ),
           backgroundColor: Colors.orange,
@@ -237,27 +172,24 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
 
   Future<void> _startNotificationSound() async {
     try {
-      await _audioPlayer.setReleaseMode(ReleaseMode.loop); // Tocar em loop
+      await _audioPlayer.setReleaseMode(ReleaseMode.loop);
       await _audioPlayer.play(AssetSource('audio/request_sound.mp3'));
-      debugPrint('🔊 Som de notificação iniciado em loop');
     } catch (e) {
-      debugPrint('❌ Erro ao iniciar som de notificação: $e');
+      debugPrint('Erro ao iniciar som de notificacao: $e');
     }
   }
 
   void _startCountdown() {
     try {
-      // Backend envia acceptanceTimeout em segundos, não expiresAt
       final timeout = widget.data['acceptanceTimeout'];
       final timeoutSeconds = timeout is int ? timeout : int.tryParse(timeout?.toString() ?? '30') ?? 30;
+      _initialSeconds = timeoutSeconds;
       _timeLeft = Duration(seconds: timeoutSeconds);
 
       if (_timeLeft.isNegative || _timeLeft.inSeconds == 0) {
         _timeLeft = Duration.zero;
         Future.microtask(() {
-          if (mounted) {
-            Navigator.pop(context);
-          }
+          if (mounted) Navigator.pop(context);
         });
         return;
       }
@@ -270,7 +202,6 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
 
         setState(() {
           _timeLeft -= const Duration(seconds: 1);
-
           if (_timeLeft.isNegative || _timeLeft.inSeconds == 0) {
             timer.cancel();
             Navigator.pop(context);
@@ -278,15 +209,13 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
         });
       });
     } catch (e) {
-      debugPrint('❌ Erro ao iniciar countdown: $e');
-      // Fallback para 30 segundos
+      _initialSeconds = 30;
       _timeLeft = const Duration(seconds: 30);
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         if (!mounted) {
           timer.cancel();
           return;
         }
-
         setState(() {
           _timeLeft -= const Duration(seconds: 1);
           if (_timeLeft.isNegative) {
@@ -305,8 +234,6 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
     _takenSubscription?.cancel();
     _audioPlayer.stop();
     _audioPlayer.dispose();
-    debugPrint('🔇 Som de notificação parado');
-    debugPrint('🔌 Subscriptions desconectadas');
     super.dispose();
   }
 
@@ -320,40 +247,35 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
     }
   }
 
-  Future<void> _acceptDelivery() async {
-    if (_isProcessing) {
-      debugPrint('[Entrega] Já existe uma ação em andamento');
-      return;
+  String _getInitials(String name) {
+    if (name.isEmpty) return 'E!';
+    final parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     }
+    return name.length >= 2 ? '${name[0].toUpperCase()}!' : name.toUpperCase();
+  }
 
-    debugPrint('[Entrega] Botão ACEITAR clicado');
-    debugPrint('[Entrega] RequestId resolvido: $_requestId');
-    debugPrint('[Entrega] Request Number: ${widget.data['requestNumber']}');
-    debugPrint('[Entrega] Payload completo: ${widget.data}');
+  Future<void> _acceptDelivery() async {
+    if (_isProcessing) return;
 
-    setState(() {
-      _isProcessing = true;
-    });
+    setState(() => _isProcessing = true);
 
     try {
       final deliveryId = _requestId;
       if (deliveryId == null) {
-        debugPrint('[Entrega] RequestId não encontrado para aceitar a entrega.');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Não foi possível identificar esta entrega. Tente novamente.'),
+              content: Text('Nao foi possivel identificar esta entrega.'),
               backgroundColor: Colors.red,
-              duration: Duration(seconds: 4),
             ),
           );
         }
         return;
       }
 
-      debugPrint('[Entrega] Chamando DeliveryService.acceptDelivery com ID: $deliveryId');
       final result = await DeliveryService.acceptDelivery(deliveryId);
-
       if (!mounted) return;
 
       if (result != null) {
@@ -361,554 +283,468 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Esta entrega já expirou e não está mais disponível'),
+              content: Text('Esta entrega ja expirou'),
               backgroundColor: Colors.orange,
-              duration: Duration(seconds: 4),
             ),
           );
           return;
         }
 
         if (result['error'] == 'delivery_in_progress') {
-          debugPrint('[Entrega] ⚠️ Motorista já possui entrega em andamento');
           Navigator.pop(context);
-
-          // Mostrar diálogo específico
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: Row(
-                children: const [
-                  Icon(Icons.warning, color: Colors.orange, size: 32),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Entrega em Andamento',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    result['message'] ??
-                    'Você já possui uma entrega em andamento.\n\nRetire o pedido antes de aceitar uma nova entrega.',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  if (result['activeDeliveryNumber'] != null) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Entrega Ativa:',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Entrega #${result['activeDeliveryNumber']}',
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('OK'),
-                ),
-                if (result['activeDeliveryId'] != null)
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: buttonColor,
-                    ),
-                    onPressed: () async {
-                      Navigator.pop(context);
-                      // Buscar dados da entrega ativa e navegar
-                      final activeDelivery = await DeliveryService.getCurrentDelivery();
-                      if (activeDelivery != null && mounted) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ActiveDeliveryScreen(delivery: activeDelivery),
-                          ),
-                        );
-                      }
-                    },
-                    child: const Text(
-                      'Ver Entrega Ativa',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-              ],
-            ),
-          );
+          _showDeliveryInProgressDialog(result);
           return;
         }
 
-        debugPrint('[Entrega] Entrega aceita! Buscando dados atualizados...');
         final updatedDelivery = await DeliveryService.getCurrentDelivery();
-        debugPrint('[Entrega] Dados atualizados: $updatedDelivery');
-
         if (mounted) {
-          Navigator.pop(context);
+          // Merge logo URL from notification data if not present in updatedDelivery
+          final deliveryData = Map<String, dynamic>.from(updatedDelivery ?? result);
+          final companyLogoUrl = widget.data['companyLogoUrl'] ?? widget.data['company_logo_url'];
+          debugPrint('Logo URL da notificacao: $companyLogoUrl');
+          if (companyLogoUrl != null && companyLogoUrl.toString().isNotEmpty) {
+            deliveryData['companyLogoUrl'] = companyLogoUrl;
+            deliveryData['company_logo_url'] = companyLogoUrl;
+            debugPrint('Logo URL adicionada ao deliveryData: $companyLogoUrl');
+          }
 
-          final deliveryPayload = updatedDelivery ?? result;
+          Navigator.pop(context);
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => ActiveDeliveryScreen(delivery: deliveryPayload),
+              builder: (context) => ActiveDeliveryScreen(delivery: deliveryData),
             ),
           );
-        
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Row(
                 children: const [
                   Icon(Icons.check_circle, color: Colors.white),
                   SizedBox(width: 12),
-                  Expanded(
-                    child: Text('Entrega aceita! Acompanhe em Entrega em andamento.'),
-                  ),
+                  Expanded(child: Text('Entrega aceita!')),
                 ],
               ),
               backgroundColor: Colors.green,
-              duration: const Duration(seconds: 3),
             ),
           );
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Erro ao aceitar entrega. Tente novamente.'),
+            content: Text('Erro ao aceitar entrega.'),
             backgroundColor: Colors.red,
-            duration: Duration(seconds: 4),
           ),
         );
         Navigator.pop(context);
       }
     } catch (e) {
-      debugPrint('Erro ao aceitar entrega: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Erro ao aceitar entrega. Tente novamente.'),
+            content: Text('Erro ao aceitar entrega.'),
             backgroundColor: Colors.red,
           ),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
+      if (mounted) setState(() => _isProcessing = false);
     }
+  }
+
+  void _showDeliveryInProgressDialog(Map<String, dynamic> result) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.warning, color: Colors.orange, size: 32),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text('Entrega em Andamento', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+        content: Text(result['message'] ?? 'Voce ja possui uma entrega em andamento.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
+          if (result['activeDeliveryId'] != null)
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: buttonColor),
+              onPressed: () async {
+                Navigator.pop(context);
+                final activeDelivery = await DeliveryService.getCurrentDelivery();
+                if (activeDelivery != null && mounted) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ActiveDeliveryScreen(delivery: activeDelivery)),
+                  );
+                }
+              },
+              child: const Text('Ver Entrega Ativa', style: TextStyle(color: Colors.white)),
+            ),
+        ],
+      ),
+    );
   }
 
   Future<void> _rejectDelivery() async {
     if (_isProcessing) return;
 
-    setState(() {
-      _isProcessing = true;
-    });
+    setState(() => _isProcessing = true);
 
     try {
       final deliveryId = _requestId;
       if (deliveryId == null) {
-        debugPrint('[Entrega] RequestId não encontrado para rejeitar a entrega.');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Não foi possível identificar esta entrega. Tente novamente.'),
-              backgroundColor: Colors.red,
-            ),
+            const SnackBar(content: Text('Nao foi possivel identificar esta entrega.'), backgroundColor: Colors.red),
           );
         }
         return;
       }
 
-      debugPrint('[Entrega] Rejeitando entrega: $deliveryId');
-      final success = await DeliveryService.rejectDelivery(deliveryId);
-
+      await DeliveryService.rejectDelivery(deliveryId);
       if (!mounted) return;
-
       Navigator.pop(context);
-
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Entrega rejeitada'),
-            backgroundColor: Colors.grey,
-          ),
-        );
-      }
     } catch (e) {
-      debugPrint('Erro ao rejeitar entrega: $e');
-      if (mounted) {
-        Navigator.pop(context);
-      }
+      if (mounted) Navigator.pop(context);
     } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      title: Row(
+    final media = MediaQuery.of(context).size;
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Stack(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: buttonColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.local_shipping,
-              color: buttonColor,
-              size: 28,
+          // Fundo semi-transparente
+          GestureDetector(
+            onTap: () {},
+            child: Container(color: Colors.black.withValues(alpha: 0.3)),
+          ),
+
+          // Conteudo principal
+          Column(
+            children: [
+              const Spacer(),
+              _buildTimerCircle(media),
+              SizedBox(height: media.width * 0.04),
+              _buildMainCard(media),
+              SizedBox(height: media.width * 0.06),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimerCircle(Size media) {
+    final circleSize = media.width * 0.22;
+    final progress = _initialSeconds > 0 ? _timeLeft.inSeconds / _initialSeconds : 0.0;
+
+    return Container(
+      width: circleSize,
+      height: circleSize,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          SizedBox(
+            width: circleSize - 8,
+            height: circleSize - 8,
+            child: CircularProgressIndicator(
+              value: progress,
+              strokeWidth: 5,
+              backgroundColor: Colors.grey.shade200,
+              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF9C27B0)),
             ),
           ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text(
-              'Nova Entrega!',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
+          Text(
+            '${_timeLeft.inSeconds}',
+            style: GoogleFonts.notoSans(
+              fontSize: media.width * 0.1,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF9C27B0),
             ),
           ),
         ],
       ),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Empresa
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.business, color: Colors.blue, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        (widget.data['companyName'] ?? '').trim().isEmpty
-                            ? 'Empresa'
-                            : widget.data['companyName'],
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
+    );
+  }
 
-              // Múltiplas Paradas (quando detectado no dropoffAddress)
-              if (_hasMultipleStops())
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.purple.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: Colors.purple,
-                      width: 2,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.route,
-                        color: Colors.purple,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${_getStopsCount()} paradas',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.purple,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+  Widget _buildMainCard(Size media) {
+    final companyName = (widget.data['companyName'] ?? '').toString().trim();
+    final displayName = companyName.isEmpty ? 'Empresa' : companyName;
 
-              // Endereço de Retirada (sempre exibido)
-              _buildAddressRow(
-                Icons.place,
-                Colors.green,
-                'Retirada',
-                widget.data['pickupAddress'] ?? '',
-              ),
-              const SizedBox(height: 8),
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: media.width * 0.04),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 20,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header
+          Padding(
+            padding: EdgeInsets.all(media.width * 0.045),
+            child: _buildHeader(media, displayName),
+          ),
 
-              // Endereço de Entrega (sempre exibido)
-              if (_hasMultipleStops())
-                _buildAddressRow(
-                  Icons.flag,
-                  Colors.purple,
-                  'Primeira parada',
-                  _getFirstStopAddress(),
-                )
-              else
-                _buildAddressRow(
-                  Icons.flag,
-                  Colors.red,
-                  'Entrega',
-                  _getFirstStopAddress(),
-                ),
+          Divider(height: 1, color: Colors.grey.shade200),
 
-              const SizedBox(height: 16),
-
-              // Informações da entrega (sempre exibidas)
-              Row(
+          // Indicador de múltiplas paradas
+          if (_hasMultipleStops())
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(vertical: media.width * 0.025, horizontal: media.width * 0.045),
+              color: const Color(0xFF9C27B0).withValues(alpha: 0.1),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Expanded(
-                    child: _buildInfoBox(
-                      Icons.straighten,
-                      '${widget.data['distance'] ?? '0'} km',
-                      'Distância',
-                    ),
+                  Icon(
+                    Icons.route,
+                    color: const Color(0xFF9C27B0),
+                    size: media.width * 0.05,
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildInfoBox(
-                      Icons.access_time,
-                      '${widget.data['estimatedTime'] ?? '0'} min',
-                      'Tempo',
+                  SizedBox(width: media.width * 0.02),
+                  Text(
+                    '${_getStopsCount()} paradas',
+                    style: GoogleFonts.notoSans(
+                      fontSize: media.width * 0.038,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF9C27B0),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+            ),
 
-              // Aviso de Retorno (quando needs_return = true)
-              if (widget.data['needsReturn'] == true ||
-                  widget.data['needs_return'] == true ||
-                  widget.data['needsReturn'] == 'true' ||
-                  widget.data['needs_return'] == 'true')
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF4E6),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: const Color(0xFFFFB020),
-                      width: 2,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: const [
-                          Text(
-                            '⚠️',
-                            style: TextStyle(fontSize: 20),
-                          ),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'ESTA ENTREGA POSSUI VOLTA',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFFC77700),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Você precisará retornar ao ponto de retirada após entregar',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF8B5A00),
-                          height: 1.4,
+          // Enderecos
+          Padding(
+            padding: EdgeInsets.all(media.width * 0.045),
+            child: Column(
+              children: [
+                _buildAddressItem(
+                  media: media,
+                  label: 'Retirada',
+                  address: widget.data['pickupAddress'] ?? '',
+                  isPickup: true,
+                ),
+                SizedBox(height: media.width * 0.04),
+                _buildAddressItem(
+                  media: media,
+                  label: 'Entrega',
+                  address: _getFirstStopAddress(),
+                  isPickup: false,
+                ),
+              ],
+            ),
+          ),
+
+          // Botoes
+          Padding(
+            padding: EdgeInsets.fromLTRB(media.width * 0.045, 0, media.width * 0.045, media.width * 0.045),
+            child: _buildButtons(media),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(Size media, String companyName) {
+    final companyLogoUrl = (widget.data['companyLogoUrl'] ?? widget.data['company_logo_url'] ?? '').toString().trim();
+    final hasLogo = companyLogoUrl.isNotEmpty;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Logo ou Avatar com iniciais
+        Container(
+          width: media.width * 0.13,
+          height: media.width * 0.13,
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFD700),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: hasLogo
+              ? Image.network(
+                  companyLogoUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Center(
+                      child: Text(
+                        _getInitials(companyName),
+                        style: GoogleFonts.notoSans(
+                          fontSize: media.width * 0.055,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-
-              // Valor (sempre exibido)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.green, width: 2),
-                ),
-                child: Center(
-                  child: Text(
-                    'R\$ ${_formatCurrency(widget.data['estimatedAmount'])}',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Countdown
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: _timeLeft.inSeconds <= 10
-                      ? Colors.red.withOpacity(0.1)
-                      : Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: _timeLeft.inSeconds <= 10 ? Colors.red : Colors.orange,
-                    width: 2,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.timer,
-                      color: _timeLeft.inSeconds <= 10 ? Colors.red : Colors.orange,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Tempo restante: ${_timeLeft.inSeconds}s',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: _timeLeft.inSeconds <= 10 ? Colors.red : Colors.orange,
+                    );
+                  },
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Center(
+                      child: SizedBox(
+                        width: media.width * 0.06,
+                        height: media.width * 0.06,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.black54,
+                        ),
                       ),
+                    );
+                  },
+                )
+              : Center(
+                  child: Text(
+                    _getInitials(companyName),
+                    style: GoogleFonts.notoSans(
+                      fontSize: media.width * 0.055,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
-                  ],
+                  ),
                 ),
+        ),
+
+        SizedBox(width: media.width * 0.03),
+
+        // Nome e rating
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                companyName,
+                style: GoogleFonts.notoSans(
+                  fontSize: media.width * 0.042,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              SizedBox(height: 2),
+              Row(
+                children: [
+                  Icon(Icons.star, size: media.width * 0.035, color: const Color(0xFFFFD700)),
+                  SizedBox(width: 3),
+                  Text(
+                    '5.00',
+                    style: GoogleFonts.notoSans(fontSize: media.width * 0.03, color: Colors.grey.shade500),
+                  ),
+                ],
               ),
             ],
           ),
         ),
-      ),
-      actions: [
-        if (_isProcessing)
-          const Center(
-            child: CircularProgressIndicator(),
-          )
-        else ...[
-          TextButton(
-            onPressed: _rejectDelivery,
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            child: const Text(
-              'Rejeitar',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: _acceptDelivery,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: buttonColor,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text(
-              'Aceitar',
-              style: TextStyle(
-                fontSize: 16,
+
+        // Valor e tempo/distancia
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              'R\$ ${_formatCurrency(widget.data['estimatedAmount'])}',
+              style: GoogleFonts.notoSans(
+                fontSize: media.width * 0.042,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: Colors.black87,
               ),
             ),
-          ),
-        ],
+            SizedBox(height: 2),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.access_time, size: media.width * 0.028, color: Colors.grey.shade400),
+                SizedBox(width: 2),
+                Text(
+                  '${widget.data['estimatedTime'] ?? '0'} min(${widget.data['distance'] ?? '0'} km)',
+                  style: GoogleFonts.notoSans(fontSize: media.width * 0.026, color: Colors.grey.shade500),
+                ),
+              ],
+            ),
+          ],
+        ),
       ],
     );
   }
 
-  Widget _buildAddressRow(IconData icon, Color color, String label, String address) {
+  Widget _buildAddressItem({
+    required Size media,
+    required String label,
+    required String address,
+    required bool isPickup,
+  }) {
+    final color = isPickup ? const Color(0xFF4CAF50) : const Color(0xFFFF9800);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: const EdgeInsets.all(6),
+          width: media.width * 0.065,
+          height: media.width * 0.065,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(6),
+            color: color,
+            borderRadius: isPickup ? BorderRadius.circular(6) : BorderRadius.circular(media.width * 0.0325),
           ),
-          child: Icon(icon, color: color, size: 18),
+          child: Center(
+            child: isPickup
+                ? Container(
+                    width: media.width * 0.02,
+                    height: media.width * 0.02,
+                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                  )
+                : Icon(Icons.location_on, size: media.width * 0.038, color: Colors.white),
+          ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: media.width * 0.025),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: textColor.withOpacity(0.6),
+                style: GoogleFonts.notoSans(
+                  fontSize: media.width * 0.026,
+                  color: color,
                   fontWeight: FontWeight.w500,
                 ),
               ),
+              SizedBox(height: 3),
               Text(
                 address,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                style: GoogleFonts.notoSans(
+                  fontSize: media.width * 0.032,
+                  color: Colors.black87,
+                  height: 1.3,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -917,34 +753,54 @@ class _DeliveryRequestDialogState extends State<DeliveryRequestDialog> {
     );
   }
 
-  Widget _buildInfoBox(IconData icon, String value, String label) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.withOpacity(0.3)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: textColor.withOpacity(0.7), size: 20),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+  Widget _buildButtons(Size media) {
+    if (_isProcessing) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          flex: 3,
+          child: ElevatedButton(
+            onPressed: _acceptDelivery,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF9C27B0),
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(vertical: media.width * 0.038),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+              elevation: 0,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.chevron_right, size: media.width * 0.05),
+                Text(
+                  'ACEITAR',
+                  style: GoogleFonts.notoSans(fontSize: media.width * 0.035, fontWeight: FontWeight.bold),
+                ),
+              ],
             ),
           ),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: textColor.withOpacity(0.6),
+        ),
+        SizedBox(width: media.width * 0.025),
+        SizedBox(
+          width: media.width * 0.22,
+          child: OutlinedButton(
+            onPressed: _rejectDelivery,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.black54,
+              padding: EdgeInsets.symmetric(vertical: media.width * 0.038),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+              side: BorderSide(color: Colors.grey.shade300),
+            ),
+            child: Text(
+              'Rejeitar',
+              style: GoogleFonts.notoSans(fontSize: media.width * 0.035, fontWeight: FontWeight.w500),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

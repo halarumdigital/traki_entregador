@@ -42,11 +42,14 @@ class DeliveryService {
 
   // Mapear uma entrega individual de snake_case para camelCase
   static Map<String, dynamic> _mapDeliveryData(Map<String, dynamic> data) {
+    debugPrint('🗺️ Mapeando entrega - company_logo_url: ${data['company_logo_url']}');
     return {
       'requestId': data['id'],
       'requestNumber': data['request_number'],
       'companyName': data['company_name'],
       'companyPhone': data['company_phone'],
+      'companyLogoUrl': data['company_logo_url'],
+      'company_logo_url': data['company_logo_url'],
       'customerName': data['customer_name'],
       'customerWhatsapp': data['customer_whatsapp'],
       'deliveryReference': data['delivery_reference'],
@@ -62,6 +65,7 @@ class DeliveryService {
       'isTripStart': data['is_trip_start'] ?? false,
       'needsReturn': data['needs_return'] ?? false,
       'deliveredAt': data['delivered_at'],
+      'status': data['status'],
     };
   }
 
@@ -99,10 +103,14 @@ class DeliveryService {
           if (data is List) {
             // Nova API: retorna array
             debugPrint('✅ API retornou array com ${data.length} entrega(s)');
+            for (var item in data) {
+              debugPrint('🖼️ Logo URL do endpoint: ${item['company_logo_url']}');
+            }
             deliveries = data.map((item) => _mapDeliveryData(item as Map<String, dynamic>)).toList();
           } else if (data is Map<String, dynamic>) {
             // API antiga: retorna objeto único (compatibilidade)
             debugPrint('⚠️ API retornou objeto único (formato antigo)');
+            debugPrint('🖼️ Logo URL do endpoint: ${data['company_logo_url']}');
             deliveries = [_mapDeliveryData(data)];
           }
 

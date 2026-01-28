@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/delivery_service.dart';
-import '../styles/styles.dart';
 import 'rate_company_screen.dart';
 import 'delivery_with_stops_screen.dart';
 import '../models/delivery.dart';
@@ -18,52 +18,78 @@ class ActiveDeliveryScreen extends StatefulWidget {
 class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
   late Map<String, dynamic> _delivery;
   bool _isProcessing = false;
-
-  // Status da entrega
-  String _currentStatus = 'accepted'; // accepted, arrived, picked_up, delivered, delivered_awaiting_return, returning, completed
+  String _currentStatus = 'accepted';
 
   @override
   void initState() {
     super.initState();
     _delivery = widget.delivery;
-    debugPrint('📦 Tela de entrega ativa carregada: $_delivery');
+    _initializeStatus();
+    debugPrint('Tela de entrega ativa carregada: $_delivery');
+    debugPrint('Logo URL: ${_delivery['companyLogoUrl'] ?? _delivery['company_logo_url'] ?? 'NAO ENCONTRADA'}');
+    debugPrint('Status inicial: $_currentStatus');
   }
 
-  String _formatCurrency(dynamic value) {
-    try {
-      if (value == null) return '0.00';
-      final numValue = value is num ? value : double.tryParse(value.toString()) ?? 0.0;
-      return numValue.toStringAsFixed(2);
-    } catch (e) {
-      return '0.00';
+  void _initializeStatus() {
+    // Mapear status do backend para status local
+    final backendStatus = _delivery['status']?.toString().toLowerCase() ?? '';
+    debugPrint('Status do backend: $backendStatus');
+
+    switch (backendStatus) {
+      case 'accepted':
+      case 'assigned':
+        _currentStatus = 'accepted';
+        break;
+      case 'arrived':
+      case 'arrived_at_pickup':
+        _currentStatus = 'arrived';
+        break;
+      case 'picked_up':
+      case 'in_transit':
+        _currentStatus = 'picked_up';
+        break;
+      case 'delivered':
+        _currentStatus = 'delivered';
+        break;
+      case 'delivered_awaiting_return':
+        _currentStatus = 'delivered_awaiting_return';
+        break;
+      case 'returning':
+        _currentStatus = 'returning';
+        break;
+      case 'completed':
+        _currentStatus = 'completed';
+        break;
+      default:
+        // Fallback: usar isTripStart para determinar se já foi retirado
+        final isTripStart = _delivery['isTripStart'] == true;
+        _currentStatus = isTripStart ? 'picked_up' : 'accepted';
+        debugPrint('Status nao reconhecido, usando fallback: isTripStart=$isTripStart -> $_currentStatus');
     }
   }
 
-  // Limpar endereço removendo nome, WhatsApp e referência
   String _cleanAddress(String address) {
     String cleanedAddress = address;
-
-    // Remover nome do cliente [nome]
     cleanedAddress = cleanedAddress.replaceFirst(RegExp(r'^\[.*?\]\s*'), '');
-
-    // Remover WhatsApp [WhatsApp: xxx]
     cleanedAddress = cleanedAddress.replaceAll(RegExp(r'\[WhatsApp:\s*[^\]]+\]\s*'), '');
-
-    // Remover referência [Ref: xxx]
     cleanedAddress = cleanedAddress.replaceAll(RegExp(r'\[Ref:\s*[^\]]+\]\s*'), '');
-
-    // Remover padrão [nome] do início do endereço (caso ainda tenha algum)
     cleanedAddress = cleanedAddress.replaceAll(RegExp(r'^\[.*?\]\s*'), '');
-
     return cleanedAddress.trim();
+  }
+
+  String _getInitials(String name) {
+    if (name.isEmpty) return 'E!';
+    final parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name.length >= 2 ? '${name[0].toUpperCase()}!' : name.toUpperCase();
   }
 
   Future<void> _updateStatus(String newStatus, String deliveryId) async {
     if (_isProcessing) return;
 
-    setState(() {
-      _isProcessing = true;
-    });
+    setState(() => _isProcessing = true);
 
     bool success = false;
     Map<String, dynamic>? responseData;
@@ -96,7 +122,6 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
       if (!mounted) return;
 
       if (success) {
-        // Verificar se precisa retornar ao ponto de origem
         if (newStatus == 'delivered' && responseData != null) {
           final needsReturn = (responseData['needsReturn'] == true ||
                                responseData['needsReturn'] == 'true' ||
@@ -105,476 +130,274 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
           final status = responseData['status'];
 
           if (needsReturn && status == 'delivered_awaiting_return') {
-            // Entrega requer retorno
-            setState(() {
-              _currentStatus = 'delivered_awaiting_return';
-            });
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Row(
-                  children: [
-                    Icon(Icons.warning_amber, color: Colors.white),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Text('Produto entregue! Você precisa retornar ao ponto de origem.'),
-                    ),
-                  ],
-                ),
-                backgroundColor: Colors.orange,
-                duration: Duration(seconds: 4),
-              ),
-            );
+            setState(() => _currentStatus = 'delivered_awaiting_return');
+            _showSnackBar('Produto entregue! Voce precisa retornar ao ponto de origem.', Colors.orange, Icons.warning_amber);
           } else {
-            // Entrega normal sem retorno
-            setState(() {
-              _currentStatus = newStatus;
-            });
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    const Icon(Icons.check_circle, color: Colors.white),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(_getStatusMessage(newStatus)),
-                    ),
-                  ],
-                ),
-                backgroundColor: Colors.green,
-              ),
-            );
+            setState(() => _currentStatus = newStatus);
+            _showSnackBar(_getStatusMessage(newStatus), Colors.green, Icons.check_circle);
           }
         } else if (newStatus == 'start_return' && responseData != null) {
-          setState(() {
-            _currentStatus = 'returning';
-          });
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.u_turn_left, color: Colors.white),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text('Retorno iniciado! Volte ao ponto de retirada.'),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.blue,
-            ),
-          );
+          setState(() => _currentStatus = 'returning');
+          _showSnackBar('Retorno iniciado! Volte ao ponto de retirada.', Colors.blue, Icons.u_turn_left);
         } else if (newStatus == 'complete_return' && responseData != null) {
-          setState(() {
-            _currentStatus = 'completed';
-          });
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text('Entrega finalizada com sucesso!'),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.green,
-            ),
-          );
-
-          // Mostrar tela de avaliação da empresa
-          await Future.delayed(const Duration(seconds: 1));
-          if (mounted) {
-            await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => RateCompanyScreen(
-                  deliveryId: deliveryId,
-                  companyName: _delivery['companyName'] ?? 'Empresa',
-                ),
-              ),
-            );
-
-            if (mounted) {
-              Navigator.pop(context, true);
-            }
-          }
+          setState(() => _currentStatus = 'completed');
+          _showSnackBar('Entrega finalizada com sucesso!', Colors.green, Icons.check_circle);
+          await _showRatingScreen(deliveryId);
         } else {
-          setState(() {
-            _currentStatus = newStatus;
-          });
+          setState(() => _currentStatus = newStatus);
+          _showSnackBar(_getStatusMessage(newStatus), Colors.green, Icons.check_circle);
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.white),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(_getStatusMessage(newStatus)),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.green,
-            ),
-          );
-
-          // Se completou a retirada e tem múltiplas paradas, redirecionar para DeliveryWithStopsScreen
           if (newStatus == 'picked_up') {
-            final dropoffAddress = _delivery['dropoffAddress'] ??
-                                  _delivery['dropoff_address'] ??
-                                  _delivery['deliveryAddress'] ??
-                                  _delivery['delivery_address'] ?? '';
-            final hasMultipleStops = dropoffAddress.toString().contains(' | ');
-
-            if (hasMultipleStops) {
-              await Future.delayed(const Duration(milliseconds: 500));
-              if (mounted) {
-                debugPrint('🔄 Redirecionando para tela de múltiplas paradas após retirada...');
-
-                // Contar número de paradas
-                final stopsCount = dropoffAddress.toString().split(' | ').length;
-
-                // Criar objeto Delivery para passar à tela
-                final delivery = Delivery(
-                  requestId: _delivery['id']?.toString() ??
-                             _delivery['_id']?.toString() ??
-                             _delivery['deliveryId']?.toString() ??
-                             _delivery['requestId']?.toString() ?? '',
-                  requestNumber: _delivery['requestNumber']?.toString() ?? '',
-                  companyName: _delivery['companyName'],
-                  customerName: _delivery['customerName'],
-                  customerWhatsapp: _delivery['customerWhatsapp'],
-                  deliveryReference: _delivery['deliveryReference'],
-                  pickupAddress: _delivery['pickupAddress'],
-                  pickupLat: _delivery['pickupLat'] != null ? double.tryParse(_delivery['pickupLat'].toString()) : null,
-                  pickupLng: _delivery['pickupLng'] != null ? double.tryParse(_delivery['pickupLng'].toString()) : null,
-                  deliveryAddress: dropoffAddress.toString(),
-                  deliveryLat: _delivery['deliveryLat'] != null ? double.tryParse(_delivery['deliveryLat'].toString()) : null,
-                  deliveryLng: _delivery['deliveryLng'] != null ? double.tryParse(_delivery['deliveryLng'].toString()) : null,
-                  distance: _delivery['distance']?.toString(),
-                  estimatedTime: _delivery['estimatedTime']?.toString(),
-                  driverAmount: _delivery['driverAmount']?.toString(),
-                  isTripStart: true,
-                  hasMultipleStops: true,
-                  stopsCount: stopsCount,
-                );
-
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (context) => DeliveryWithStopsScreen(delivery: delivery),
-                  ),
-                );
-              }
-              return; // Retornar para não executar o código abaixo
-            }
+            await _checkMultipleStops();
           }
 
-          // Se completou, mostrar tela de avaliação
           if (newStatus == 'completed') {
-            await Future.delayed(const Duration(seconds: 1));
-            if (mounted) {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => RateCompanyScreen(
-                    deliveryId: deliveryId,
-                    companyName: _delivery['companyName'] ?? 'Empresa',
-                  ),
-                ),
-              );
-
-              if (mounted) {
-                Navigator.pop(context, true); // true indica que completou
-              }
-            }
+            await _showRatingScreen(deliveryId);
           }
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Erro ao atualizar status. Tente novamente.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showSnackBar('Erro ao atualizar status. Tente novamente.', Colors.red, Icons.error);
       }
     } catch (e) {
-      debugPrint('❌ Erro ao atualizar status: $e');
+      debugPrint('Erro ao atualizar status: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Erro ao atualizar status. Tente novamente.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showSnackBar('Erro ao atualizar status. Tente novamente.', Colors.red, Icons.error);
       }
     } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  void _showSnackBar(String message, Color color, IconData icon) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(icon, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: color,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  Future<void> _showRatingScreen(String deliveryId) async {
+    await Future.delayed(const Duration(seconds: 1));
+    if (mounted) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RateCompanyScreen(
+            deliveryId: deliveryId,
+            companyName: _delivery['companyName'] ?? 'Empresa',
+          ),
+        ),
+      );
+      if (mounted) Navigator.pop(context, true);
+    }
+  }
+
+  Future<void> _checkMultipleStops() async {
+    final dropoffAddress = _delivery['dropoffAddress'] ??
+                          _delivery['dropoff_address'] ??
+                          _delivery['deliveryAddress'] ??
+                          _delivery['delivery_address'] ?? '';
+    final hasMultipleStops = dropoffAddress.toString().contains(' | ');
+
+    if (hasMultipleStops) {
+      await Future.delayed(const Duration(milliseconds: 500));
       if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
+        final stopsCount = dropoffAddress.toString().split(' | ').length;
+        final delivery = Delivery(
+          requestId: _delivery['id']?.toString() ??
+                     _delivery['_id']?.toString() ??
+                     _delivery['deliveryId']?.toString() ??
+                     _delivery['requestId']?.toString() ?? '',
+          requestNumber: _delivery['requestNumber']?.toString() ?? '',
+          companyName: _delivery['companyName'],
+          customerName: _delivery['customerName'],
+          customerWhatsapp: _delivery['customerWhatsapp'],
+          deliveryReference: _delivery['deliveryReference'],
+          pickupAddress: _delivery['pickupAddress'],
+          pickupLat: _delivery['pickupLat'] != null ? double.tryParse(_delivery['pickupLat'].toString()) : null,
+          pickupLng: _delivery['pickupLng'] != null ? double.tryParse(_delivery['pickupLng'].toString()) : null,
+          deliveryAddress: dropoffAddress.toString(),
+          deliveryLat: _delivery['deliveryLat'] != null ? double.tryParse(_delivery['deliveryLat'].toString()) : null,
+          deliveryLng: _delivery['deliveryLng'] != null ? double.tryParse(_delivery['deliveryLng'].toString()) : null,
+          distance: _delivery['distance']?.toString(),
+          estimatedTime: _delivery['estimatedTime']?.toString(),
+          driverAmount: _delivery['driverAmount']?.toString(),
+          isTripStart: true,
+          hasMultipleStops: true,
+          stopsCount: stopsCount,
+        );
+
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => DeliveryWithStopsScreen(delivery: delivery)),
+        );
       }
     }
   }
 
   String _getStatusMessage(String status) {
     switch (status) {
-      case 'arrived':
-        return 'Chegada marcada com sucesso!';
-      case 'picked_up':
-        return 'Retirada confirmada!';
-      case 'delivered':
-        return 'Entrega confirmada!';
-      case 'completed':
-        return 'Entrega concluída com sucesso!';
-      default:
-        return 'Status atualizado!';
-    }
-  }
-
-  String _getStatusLabel(String status) {
-    switch (status) {
-      case 'accepted':
-        return 'Aceita';
-      case 'arrived':
-        return 'No Local de Retirada';
-      case 'picked_up':
-        return 'Pedido Retirado';
-      case 'delivered':
-        return 'Pedido Entregue';
-      case 'delivered_awaiting_return':
-        return 'Aguardando Retorno';
-      case 'returning':
-        return 'Retornando ao Ponto de Origem';
-      case 'completed':
-        return 'Concluída';
-      default:
-        return 'Desconhecido';
-    }
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'accepted':
-        return Colors.blue;
-      case 'arrived':
-        return Colors.orange;
-      case 'picked_up':
-        return Colors.purple;
-      case 'delivered':
-        return Colors.green;
-      case 'delivered_awaiting_return':
-        return Colors.orange;
-      case 'returning':
-        return Colors.blue;
-      case 'completed':
-        return Colors.teal;
-      default:
-        return Colors.grey;
+      case 'arrived': return 'Chegada marcada com sucesso!';
+      case 'picked_up': return 'Retirada confirmada!';
+      case 'delivered': return 'Entrega confirmada!';
+      case 'completed': return 'Entrega concluida com sucesso!';
+      default: return 'Status atualizado!';
     }
   }
 
   Future<void> _openGoogleMaps(double lat, double lng) async {
-    final url = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng',
-    );
-
+    final url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
     try {
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Não foi possível abrir o Google Maps'),
-            ),
-          );
-        }
       }
     } catch (e) {
-      debugPrint('❌ Erro ao abrir Google Maps: $e');
+      debugPrint('Erro ao abrir Google Maps: $e');
     }
   }
 
   Future<void> _openWaze(double lat, double lng) async {
     final url = Uri.parse('https://waze.com/ul?ll=$lat,$lng&navigate=yes');
-
     try {
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Não foi possível abrir o Waze'),
-            ),
-          );
-        }
       }
     } catch (e) {
-      debugPrint('❌ Erro ao abrir Waze: $e');
+      debugPrint('Erro ao abrir Waze: $e');
     }
+  }
+
+  void _showMapOptions(double lat, double lng) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Abrir com',
+                  style: GoogleFonts.notoSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ListTile(
+                  leading: Container(
+                    width: 45,
+                    height: 45,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4285F4),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.map, color: Colors.white),
+                  ),
+                  title: Text(
+                    'Google Maps',
+                    style: GoogleFonts.notoSans(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    'Navegacao pelo Google',
+                    style: GoogleFonts.notoSans(fontSize: 12, color: Colors.grey),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _openGoogleMaps(lat, lng);
+                  },
+                ),
+                ListTile(
+                  leading: Container(
+                    width: 45,
+                    height: 45,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF33CCFF),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.navigation, color: Colors.white),
+                  ),
+                  title: Text(
+                    'Waze',
+                    style: GoogleFonts.notoSans(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    'Navegacao com alertas de transito',
+                    style: GoogleFonts.notoSans(fontSize: 12, color: Colors.grey),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _openWaze(lat, lng);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _openWhatsApp(String phoneNumber) async {
     try {
-      // Remover caracteres não numéricos
       final cleanNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
-
-      // URL do WhatsApp (funciona em Android e iOS)
       final whatsappUrl = Uri.parse('https://wa.me/$cleanNumber');
-
       if (await canLaunchUrl(whatsappUrl)) {
         await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Não foi possível abrir o WhatsApp'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
       }
     } catch (e) {
-      debugPrint('❌ Erro ao abrir WhatsApp: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Erro ao abrir WhatsApp'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      debugPrint('Erro ao abrir WhatsApp: $e');
     }
   }
 
-  void _showNavigationOptions({required bool isPickup}) {
-    final address = isPickup
-        ? (_delivery['pickupAddress'] ?? 'Local de retirada')
-        : (_delivery['deliveryAddress'] ?? _delivery['dropoffAddress'] ?? 'Local de entrega');
+  void _navigateToLocation({required bool isPickup}) {
     final lat = isPickup ? _delivery['pickupLat'] : _delivery['deliveryLat'];
     final lng = isPickup ? _delivery['pickupLng'] : _delivery['deliveryLng'];
-    final locationName = isPickup
-        ? (_delivery['companyName'] ?? 'Empresa')
-        : (_delivery['customerName'] ?? 'Cliente');
 
+    if (lat != null && lng != null) {
+      _showMapOptions(
+        lat is double ? lat : double.tryParse(lat.toString()) ?? 0.0,
+        lng is double ? lng : double.tryParse(lng.toString()) ?? 0.0,
+      );
+    }
+  }
+
+  void _showCancelConfirmation() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: const [
-            Icon(Icons.navigation, color: Colors.blue, size: 28),
+            Icon(Icons.warning, color: Colors.red, size: 28),
             SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Traçar Rota',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-            ),
+            Text('Cancelar Entrega?'),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              isPickup ? 'Ir para o local de retirada:' : 'Ir para o local de entrega:',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.withOpacity(0.3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        isPickup ? Icons.business : Icons.person,
-                        color: Colors.blue,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          locationName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.place, color: Colors.green, size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _cleanAddress(address),
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Escolha o aplicativo de navegação:',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-          ],
-        ),
+        content: const Text('Tem certeza que deseja cancelar esta entrega? Esta acao nao pode ser desfeita.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: const Text('Nao'),
           ),
-          const SizedBox(width: 8),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.map, color: Colors.white),
-            label: const Text('Google Maps', style: TextStyle(color: Colors.white)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            ),
-            onPressed: () async {
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
               Navigator.pop(context);
-              await _openGoogleMaps(
-                lat is double ? lat : double.tryParse(lat?.toString() ?? '0') ?? 0.0,
-                lng is double ? lng : double.tryParse(lng?.toString() ?? '0') ?? 0.0,
-              );
+              Navigator.pop(context, false);
             },
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.navigation, color: Colors.white),
-            label: const Text('Waze', style: TextStyle(color: Colors.white)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            ),
-            onPressed: () async {
-              Navigator.pop(context);
-              await _openWaze(
-                lat is double ? lat : double.tryParse(lat?.toString() ?? '0') ?? 0.0,
-                lng is double ? lng : double.tryParse(lng?.toString() ?? '0') ?? 0.0,
-              );
-            },
+            child: const Text('Sim, Cancelar', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -583,397 +406,332 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final media = MediaQuery.of(context).size;
+    final isPickupPhase = _currentStatus == 'accepted' || _currentStatus == 'arrived' || _currentStatus == 'returning';
+    final companyName = (_delivery['companyName'] ?? 'Empresa').toString();
+    final companyLogoUrl = (_delivery['companyLogoUrl'] ?? _delivery['company_logo_url'] ?? '').toString().trim();
+
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: buttonColor,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            // Voltar para Home sem fechar a entrega
-            Navigator.pop(context, false); // false indica que não completou
-          },
-        ),
-        title: const Text(
-          'Entrega em Andamento',
-          style: TextStyle(color: Colors.white),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Header com status atual
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: buttonColor,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(_currentStatus),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _getStatusLabel(_currentStatus),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
+      backgroundColor: Colors.grey.shade200,
+      body: Stack(
+        children: [
+          // Fundo
+          Container(
+            width: double.infinity,
+            height: double.infinity,
+            color: Colors.grey.shade200,
+          ),
+
+          // Card principal com botao acima
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Botao de navegacao acima do modal
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: ElevatedButton.icon(
+                    onPressed: () => _navigateToLocation(isPickup: isPickupPhase),
+                    icon: const Icon(Icons.map, color: Colors.white),
+                    label: Text(
+                      'Abrir Mapa',
+                      style: GoogleFonts.notoSans(
                         fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Pedido #${_delivery['requestNumber'] ?? 'N/A'}',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF9C27B0),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                      elevation: 4,
                     ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Aviso de Retorno (quando needs_return = true)
-            if (_delivery['needsReturn'] == true ||
-                _delivery['needs_return'] == true ||
-                _delivery['needsReturn'] == 'true' ||
-                _delivery['needs_return'] == 'true')
-              Container(
-                margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF4E6),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: const Color(0xFFFFB020),
-                    width: 2,
                   ),
                 ),
-                child: Row(
-                  children: [
-                    const Text(
-                      '⚠️',
-                      style: TextStyle(fontSize: 24),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            'ESTA ENTREGA POSSUI VOLTA',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFFC77700),
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Você precisará retornar ao ponto de retirada após entregar',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF8B5A00),
-                              height: 1.3,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
 
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Valor da entrega
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.green, width: 2),
-                    ),
-                    child: Column(
-                      children: [
-                        const Text(
-                          'Valor da Entrega',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'R\$ ${_formatCurrency(_delivery['driverAmount'] ?? _delivery['estimatedAmount'])}',
-                          style: const TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Mostrar apenas local de RETIRADA quando status é "accepted", "arrived" ou "returning"
-                  if (_currentStatus == 'accepted' || _currentStatus == 'arrived' || _currentStatus == 'returning')
-                    _buildLocationCard(
-                      title: _currentStatus == 'returning' ? 'Voltar ao Ponto de Retirada' : 'Local de Retirada',
-                      icon: Icons.store,
-                      iconColor: _currentStatus == 'returning' ? Colors.orange : Colors.blue,
-                      name: _delivery['companyName'] ?? 'Empresa',
-                      address: _delivery['pickupAddress'] ?? '',
-                      phone: _delivery['companyPhone'],
-                      onNavigate: () => _showNavigationOptions(isPickup: true),
-                    ),
-
-                  // Mostrar apenas local de ENTREGA quando status é "picked_up", "delivered" ou "delivered_awaiting_return"
-                  if (_currentStatus == 'picked_up' || _currentStatus == 'delivered' || _currentStatus == 'delivered_awaiting_return')
-                    _buildLocationCard(
-                      title: 'Local de Entrega',
-                      icon: Icons.person,
-                      iconColor: Colors.orange,
-                      name: _delivery['customerName'] ?? 'Cliente',
-                      address: _delivery['deliveryAddress'] ?? _delivery['dropoffAddress'] ?? '',
-                      phone: _delivery['customerWhatsapp'],
-                      reference: _delivery['deliveryReference'],
-                      onNavigate: () => _showNavigationOptions(isPickup: false),
-                    ),
-
-                  const SizedBox(height: 24),
-
-                  // Informações adicionais
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildInfoBox(
-                          Icons.straighten,
-                          '${_delivery['distance'] ?? '0'} km',
-                          'Distância',
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildInfoBox(
-                          Icons.access_time,
-                          '${_delivery['estimatedTime'] ?? '0'} min',
-                          'Tempo Estimado',
-                        ),
+                // Card
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, -5),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
-
-                  // Botões de atualização de status
-                  const Text(
-                    'Atualizar Status',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  if (_isProcessing)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: CircularProgressIndicator(),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Handle
+                      Container(
+                        margin: const EdgeInsets.only(top: 12),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
-                    )
-                  else
-                    _buildStatusButtons(),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  Widget _buildLocationCard({
-    required String title,
-    required IconData icon,
-    required Color iconColor,
-    required String name,
-    required String address,
-    String? phone,
-    String? reference,
-    required VoidCallback onNavigate,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withOpacity(0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: iconColor, size: 24),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: iconColor,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            name,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.place, size: 18, color: Colors.grey),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  _cleanAddress(address),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
+                      // Header com empresa/cliente
+                      Padding(
+                        padding: EdgeInsets.all(media.width * 0.045),
+                        child: Row(
+                          children: [
+                            // Logo
+                            Container(
+                              width: media.width * 0.13,
+                              height: media.width * 0.13,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFD700),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: companyLogoUrl.isNotEmpty
+                                  ? Image.network(
+                                      companyLogoUrl,
+                                      fit: BoxFit.cover,
+                                      loadingBuilder: (context, child, loadingProgress) {
+                                        if (loadingProgress == null) return child;
+                                        return Center(
+                                          child: SizedBox(
+                                            width: media.width * 0.05,
+                                            height: media.width * 0.05,
+                                            child: const CircularProgressIndicator(strokeWidth: 2),
+                                          ),
+                                        );
+                                      },
+                                      errorBuilder: (_, __, ___) => Center(
+                                        child: Text(
+                                          _getInitials(companyName),
+                                          style: GoogleFonts.notoSans(
+                                            fontSize: media.width * 0.055,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : Center(
+                                      child: Text(
+                                        _getInitials(companyName),
+                                        style: GoogleFonts.notoSans(
+                                          fontSize: media.width * 0.055,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                    ),
+                            ),
+                            SizedBox(width: media.width * 0.03),
+                            // Nome, rating e WhatsApp
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    isPickupPhase ? companyName : (_delivery['customerName'] ?? 'Cliente'),
+                                    style: GoogleFonts.notoSans(
+                                      fontSize: media.width * 0.045,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.star, size: media.width * 0.035, color: const Color(0xFFFFD700)),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        '5.00',
+                                        style: GoogleFonts.notoSans(fontSize: media.width * 0.03, color: Colors.grey.shade500),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // WhatsApp da empresa
+                            if (_getPhoneNumber(isPickupPhase).isNotEmpty)
+                              GestureDetector(
+                                onTap: () => _openWhatsApp(_getPhoneNumber(isPickupPhase)),
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF25D366),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.phone, color: Colors.white, size: media.width * 0.045),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'WhatsApp',
+                                        style: GoogleFonts.notoSans(
+                                          color: Colors.white,
+                                          fontSize: media.width * 0.03,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            SizedBox(width: media.width * 0.02),
+                            // Botao Cancelar
+                            TextButton(
+                              onPressed: _showCancelConfirmation,
+                              child: Text(
+                                'Cancelar',
+                                style: GoogleFonts.notoSans(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Divider(height: 1, color: Colors.grey.shade200),
+                      // Endereco
+                      Padding(
+                        padding: EdgeInsets.all(media.width * 0.045),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isPickupPhase
+                                  ? (_currentStatus == 'returning' ? 'Voltar para Retirada' : 'Local de Retirada')
+                                  : 'Local de Entrega',
+                              style: GoogleFonts.notoSans(
+                                fontSize: media.width * 0.032,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                            SizedBox(height: media.width * 0.02),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: media.width * 0.08,
+                                  height: media.width * 0.08,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF9C27B0),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Icon(Icons.location_on, color: Colors.white, size: media.width * 0.045),
+                                ),
+                                SizedBox(width: media.width * 0.03),
+                                Expanded(
+                                  child: Text(
+                                    isPickupPhase
+                                        ? _cleanAddress(_delivery['pickupAddress'] ?? '')
+                                        : _cleanAddress(_delivery['deliveryAddress'] ?? _delivery['dropoffAddress'] ?? ''),
+                                    style: GoogleFonts.notoSans(
+                                      fontSize: media.width * 0.036,
+                                      color: Colors.black87,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // Referencia (se houver e for entrega)
+                            if (!isPickupPhase && (_delivery['deliveryReference'] ?? '').toString().isNotEmpty) ...[
+                              SizedBox(height: media.width * 0.03),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF9C27B0).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: const Color(0xFF9C27B0).withValues(alpha: 0.3)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.info_outline, color: Color(0xFF9C27B0), size: 18),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Ref: ${_delivery['deliveryReference']}',
+                                        style: GoogleFonts.notoSans(
+                                          fontSize: media.width * 0.032,
+                                          color: const Color(0xFF9C27B0),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      // Aviso de retorno
+                      if (_delivery['needsReturn'] == true || _delivery['needs_return'] == true)
+                        Container(
+                          margin: EdgeInsets.symmetric(horizontal: media.width * 0.045),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF9C27B0).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFF9C27B0), width: 2),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.warning_amber, color: Color(0xFF9C27B0)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Esta entrega possui volta',
+                                  style: GoogleFonts.notoSans(
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF9C27B0),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      SizedBox(height: media.width * 0.03),
+                      // Botao de acao
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(media.width * 0.045, 0, media.width * 0.045, media.width * 0.06),
+                        child: _buildActionButton(media),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          if (phone != null && phone.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            InkWell(
-              onTap: () => _openWhatsApp(phone),
+
+          // Botao voltar
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 10,
+            left: 16,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context, false),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.green.withOpacity(0.3)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.phone, size: 16, color: Colors.green[700]),
-                    const SizedBox(width: 6),
-                    Text(
-                      phone,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.green[700],
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Ícone do WhatsApp
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Icon(
-                        Icons.chat,
-                        size: 14,
-                        color: Colors.white,
-                      ),
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 10,
                     ),
                   ],
                 ),
-              ),
-            ),
-          ],
-          if (reference != null && reference.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.orange.withOpacity(0.3)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.location_on, size: 18, color: Colors.orange[700]),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Ponto de Referência:',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.orange[700],
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          reference,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: onNavigate,
-              icon: const Icon(Icons.navigation, color: Colors.white),
-              label: const Text(
-                'Traçar Rota',
-                style: TextStyle(color: Colors.white),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: buttonColor,
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: const Icon(Icons.arrow_back, color: Colors.black87),
               ),
             ),
           ),
@@ -982,154 +740,68 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
     );
   }
 
-  Widget _buildInfoBox(IconData icon, String value, String label) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.withOpacity(0.3)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: textColor.withOpacity(0.7), size: 24),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              color: textColor.withOpacity(0.6),
-            ),
-          ),
-        ],
-      ),
-    );
+  String _getPhoneNumber(bool isPickupPhase) {
+    if (isPickupPhase) {
+      return (_delivery['companyPhone'] ?? '').toString();
+    }
+    return (_delivery['customerWhatsapp'] ?? '').toString();
   }
 
-  Widget _buildStatusButtons() {
+  Widget _buildActionButton(Size media) {
+    if (_isProcessing) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     final deliveryId = _delivery['requestId'] ?? _delivery['deliveryId'] ?? '';
+    String buttonText;
+    VoidCallback onPressed;
 
-    return Column(
-      children: [
-        if (_currentStatus == 'accepted')
-          _buildStatusButton(
-            label: 'Cheguei no Local de Retirada',
-            icon: Icons.location_on,
-            color: Colors.orange,
-            onPressed: () => _updateStatus('arrived', deliveryId),
-          ),
-        if (_currentStatus == 'arrived')
-          _buildStatusButton(
-            label: 'Retirei o Pedido',
-            icon: Icons.check_box,
-            color: Colors.purple,
-            onPressed: () => _updateStatus('picked_up', deliveryId),
-          ),
-        if (_currentStatus == 'picked_up')
-          _buildStatusButton(
-            label: 'Entreguei o Pedido',
-            icon: Icons.done_all,
-            color: Colors.green,
-            onPressed: () => _updateStatus('delivered', deliveryId),
-          ),
-        if (_currentStatus == 'delivered')
-          _buildStatusButton(
-            label: 'Concluir Entrega',
-            icon: Icons.celebration,
-            color: Colors.teal,
-            onPressed: () => _updateStatus('completed', deliveryId),
-          ),
-        // Novo: Botão para iniciar retorno
-        if (_currentStatus == 'delivered_awaiting_return')
-          Column(
-            children: [
-              // Card informativo
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange, width: 2),
-                ),
-                child: Column(
-                  children: [
-                    const Icon(Icons.warning_amber, color: Colors.orange, size: 40),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Produto Entregue!',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Você precisa retornar ao ponto de retirada para finalizar esta entrega.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _buildStatusButton(
-                label: 'Iniciar Retorno ao Ponto de Origem',
-                icon: Icons.u_turn_left,
-                color: Colors.blue,
-                onPressed: () => _updateStatus('start_return', deliveryId),
-              ),
-            ],
-          ),
-        // Novo: Botão para completar retorno
-        if (_currentStatus == 'returning')
-          _buildStatusButton(
-            label: 'Cheguei de Volta no Ponto de Origem',
-            icon: Icons.check_circle,
-            color: Colors.green,
-            onPressed: () => _updateStatus('complete_return', deliveryId),
-          ),
-      ],
-    );
-  }
+    switch (_currentStatus) {
+      case 'accepted':
+        buttonText = 'CHEGUEI';
+        onPressed = () => _updateStatus('arrived', deliveryId);
+        break;
+      case 'arrived':
+        buttonText = 'RETIREI O PEDIDO';
+        onPressed = () => _updateStatus('picked_up', deliveryId);
+        break;
+      case 'picked_up':
+        buttonText = 'ENTREGUEI';
+        onPressed = () => _updateStatus('delivered', deliveryId);
+        break;
+      case 'delivered':
+        buttonText = 'CONCLUIR ENTREGA';
+        onPressed = () => _updateStatus('completed', deliveryId);
+        break;
+      case 'delivered_awaiting_return':
+        buttonText = 'INICIAR RETORNO';
+        onPressed = () => _updateStatus('start_return', deliveryId);
+        break;
+      case 'returning':
+        buttonText = 'CHEGUEI DE VOLTA';
+        onPressed = () => _updateStatus('complete_return', deliveryId);
+        break;
+      default:
+        buttonText = 'CONTINUAR';
+        onPressed = () {};
+    }
 
-  Widget _buildStatusButton({
-    required String label,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
     return SizedBox(
       width: double.infinity,
-      child: ElevatedButton.icon(
+      child: ElevatedButton(
         onPressed: onPressed,
-        icon: Icon(icon, color: Colors.white),
-        label: Text(
-          label,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+          backgroundColor: const Color(0xFF9C27B0),
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(vertical: media.width * 0.04),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 0,
+        ),
+        child: Text(
+          buttonText,
+          style: GoogleFonts.notoSans(
+            fontSize: media.width * 0.04,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),

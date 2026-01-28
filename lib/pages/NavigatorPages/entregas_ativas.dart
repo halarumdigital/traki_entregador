@@ -3,8 +3,10 @@
 import 'package:flutter/material.dart';
 import '../../models/delivery.dart';
 import '../../services/delivery_service.dart';
+import '../../styles/app_colors.dart';
 import '../../styles/styles.dart';
 import '../../widgets/widgets.dart';
+import '../active_delivery_screen.dart';
 import '../delivery_with_stops_screen.dart';
 
 class EntregasAtivasScreen extends StatefulWidget {
@@ -46,12 +48,52 @@ class _EntregasAtivasScreenState extends State<EntregasAtivasScreen> {
   }
 
   Future<void> _abrirEntrega(Delivery entrega) async {
-    final resultado = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DeliveryWithStopsScreen(delivery: entrega),
-      ),
-    );
+    // Verificar se a entrega tem múltiplas paradas
+    final hasMultipleStops = entrega.deliveryAddress?.contains(' | ') ?? false;
+
+    dynamic resultado;
+
+    if (hasMultipleStops) {
+      // Entrega com múltiplas paradas
+      resultado = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DeliveryWithStopsScreen(delivery: entrega),
+        ),
+      );
+    } else {
+      // Entrega normal - usar ActiveDeliveryScreen
+      resultado = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ActiveDeliveryScreen(
+            delivery: {
+              'id': entrega.requestId,
+              'requestId': entrega.requestId,
+              'requestNumber': entrega.requestNumber,
+              'companyName': entrega.companyName,
+              'companyPhone': entrega.companyPhone,
+              'customerName': entrega.customerName,
+              'customerWhatsapp': entrega.customerWhatsapp,
+              'deliveryReference': entrega.deliveryReference,
+              'pickupAddress': entrega.pickupAddress,
+              'pickupLat': entrega.pickupLat,
+              'pickupLng': entrega.pickupLng,
+              'deliveryAddress': entrega.deliveryAddress,
+              'dropoffAddress': entrega.deliveryAddress,
+              'deliveryLat': entrega.deliveryLat,
+              'deliveryLng': entrega.deliveryLng,
+              'distance': entrega.distance,
+              'estimatedTime': entrega.estimatedTime,
+              'driverAmount': entrega.driverAmount,
+              'status': entrega.status,
+              'isTripStart': entrega.isTripStart,
+              'needsReturn': entrega.needsReturn,
+            },
+          ),
+        ),
+      );
+    }
 
     if (resultado == true) {
       _loadEntregas();
@@ -76,7 +118,7 @@ class _EntregasAtivasScreenState extends State<EntregasAtivasScreen> {
                 bottom: media.width * 0.05,
               ),
               decoration: BoxDecoration(
-                color: theme,
+                color: AppColors.primary,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
@@ -122,13 +164,13 @@ class _EntregasAtivasScreenState extends State<EntregasAtivasScreen> {
               margin: EdgeInsets.all(media.width * 0.04),
               padding: EdgeInsets.all(media.width * 0.04),
               decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
+                color: AppColors.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.blue, size: media.width * 0.05),
+                  Icon(Icons.info_outline, color: AppColors.primary, size: media.width * 0.05),
                   SizedBox(width: media.width * 0.03),
                   Expanded(
                     child: MyText(
@@ -144,9 +186,9 @@ class _EntregasAtivasScreenState extends State<EntregasAtivasScreen> {
             // Conteúdo
             Expanded(
               child: _isLoading
-                  ? Center(
+                  ? const Center(
                       child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(theme),
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                       ),
                     )
                   : _entregas.isEmpty
@@ -203,26 +245,44 @@ class _EntregasAtivasScreenState extends State<EntregasAtivasScreen> {
     switch (entrega.status?.toLowerCase()) {
       case 'aceita':
       case 'accepted':
+      case 'assigned':
         statusColor = Colors.orange;
         statusIcon = Icons.local_shipping;
         statusText = 'Aceita';
         break;
+      case 'coleta':
+      case 'em coleta':
+      case 'aguardando_coleta':
+        statusColor = Colors.orange;
+        statusIcon = Icons.inventory_2;
+        statusText = 'Coleta';
+        break;
       case 'em andamento':
       case 'in_progress':
-        statusColor = Colors.blue;
+      case 'arrived':
+      case 'arrived_at_pickup':
+        statusColor = AppColors.primary;
         statusIcon = Icons.directions_car;
         statusText = 'Em Andamento';
         break;
       case 'coletada':
       case 'picked_up':
+      case 'in_transit':
         statusColor = Colors.green;
         statusIcon = Icons.check_circle;
         statusText = 'Coletada';
         break;
+      case 'pending':
+      case 'aguardando':
+        statusColor = Colors.orange;
+        statusIcon = Icons.schedule;
+        statusText = 'Aguardando';
+        break;
       default:
-        statusColor = Colors.grey;
-        statusIcon = Icons.help;
-        statusText = entrega.status ?? 'Indefinido';
+        // Para status desconhecido, mostrar o status original ou "Em Andamento"
+        statusColor = Colors.orange;
+        statusIcon = Icons.local_shipping;
+        statusText = entrega.status ?? 'Em Andamento';
     }
 
     return Container(
@@ -274,7 +334,7 @@ class _EntregasAtivasScreenState extends State<EntregasAtivasScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         MyText(
-                          text: 'Pedido #${entrega.requestNumber}',
+                          text: entrega.companyName ?? 'Entrega',
                           size: media.width * sixteen,
                           fontweight: FontWeight.bold,
                           color: textColor,

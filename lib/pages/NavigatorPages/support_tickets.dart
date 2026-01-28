@@ -155,9 +155,9 @@ class _SupportTicketsPageState extends State<SupportTicketsPage> {
                             Positioned(
                               child: InkWell(
                                 onTap: () {
-                                  Scaffold.of(context).openDrawer();
+                                  Navigator.pop(context);
                                 },
-                                child: Icon(Icons.menu, color: textColor),
+                                child: Icon(Icons.arrow_back, color: textColor),
                               ),
                             )
                           ],

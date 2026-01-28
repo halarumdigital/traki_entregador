@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_driver/models/delivery.dart';
 import 'package:flutter_driver/services/delivery_service.dart';
 import 'package:intl/intl.dart';
+import '../../styles/app_colors.dart';
 import '../../styles/styles.dart';
 import '../../widgets/widgets.dart';
 
@@ -74,8 +75,8 @@ class _MyDeliveriesState extends State<MyDeliveries> {
       builder: (context, child) {
         return Theme(
           data: ThemeData.light().copyWith(
-            colorScheme: ColorScheme.light(
-              primary: theme,
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
               onPrimary: Colors.white,
             ),
           ),
@@ -151,8 +152,8 @@ class _MyDeliveriesState extends State<MyDeliveries> {
                 // Header with theme color
                 Container(
                   padding: EdgeInsets.only(bottom: media.width * 0.03),
-                  decoration: BoxDecoration(
-                    border: Border(bottom: BorderSide(color: theme, width: 2)),
+                  decoration: const BoxDecoration(
+                    border: Border(bottom: BorderSide(color: AppColors.primary, width: 2)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -266,21 +267,21 @@ class _MyDeliveriesState extends State<MyDeliveries> {
                 'Total',
                 '${stats.totalDeliveries}',
                 Icons.inventory_2_outlined,
-                const Color(0xFF9C27B0),
+                AppColors.primary,
                 media,
               ),
               _buildStatItem(
                 'Concluídas',
                 '${stats.completedDeliveries}',
                 Icons.check_circle_outline,
-                const Color(0xFF9C27B0),
+                AppColors.primary,
                 media,
               ),
               _buildStatItem(
                 'Canceladas',
                 '${stats.cancelledDeliveries}',
                 Icons.cancel_outlined,
-                const Color(0xFF9C27B0),
+                AppColors.primary,
                 media,
               ),
             ],
@@ -431,7 +432,7 @@ class _MyDeliveriesState extends State<MyDeliveries> {
               vertical: media.width * 0.03,
             ),
             decoration: BoxDecoration(
-              color: const Color(0xFF9C27B0).withOpacity(0.1),
+              color: AppColors.primary.withOpacity(0.1),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
@@ -442,7 +443,7 @@ class _MyDeliveriesState extends State<MyDeliveries> {
                 Icon(
                   Icons.calendar_today,
                   size: media.width * 0.04,
-                  color: const Color(0xFF9C27B0),
+                  color: AppColors.primary,
                 ),
                 SizedBox(width: media.width * 0.02),
                 MyText(
@@ -530,24 +531,24 @@ class _MyDeliveriesState extends State<MyDeliveries> {
       child: Scaffold(
         backgroundColor: page,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.primary,
           elevation: 0,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: textColor),
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () => Navigator.pop(context),
           ),
           title: MyText(
             text: 'Minhas Entregas',
             size: media.width * eighteen,
             fontweight: FontWeight.bold,
-            color: textColor,
+            color: Colors.white,
           ),
           centerTitle: true,
         ),
         body: _isLoading
-            ? Center(
+            ? const Center(
                 child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(theme),
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                 ),
               )
             : Column(

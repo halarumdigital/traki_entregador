@@ -54,6 +54,7 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
   int _notificationCount = 0; // Contador de notificações novas
   DateTime? _lastNotificationCheck; // Última vez que viu notificações
   int _todayDeliveries = 0; // Entregas de hoje (zera à meia noite)
+  List<Map<String, dynamic>> _promotions = []; // Promoções ativas
 
   @override
   void initState() {
@@ -66,6 +67,7 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
     _loadWalletBalance(); // NOVO: carregar saldo da carteira
     _loadNotificationCount(); // Carregar contador de notificações
     _loadTodayDeliveries(); // Carregar entregas de hoje
+    _loadPromotions(); // Carregar promoções ativas
     _startLocationUpdates();
     _startBlockStatusCheck();
   }
@@ -445,6 +447,26 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _loadPromotions() async {
+    try {
+      debugPrint('🎁 Carregando promoções ativas...');
+      final promotions = await DeliveryService.getPromotions();
+
+      if (mounted) {
+        setState(() {
+          _promotions = promotions;
+        });
+        debugPrint('✅ ${promotions.length} promoções carregadas');
+        for (var promo in promotions) {
+          debugPrint('🎁 Promoção completa: $promo');
+          debugPrint('🎁 Progress object: ${promo['progress']}');
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao carregar promoções: $e');
+    }
+  }
+
   Future<void> _markNotificationsAsRead() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('lastNotificationCheck', DateTime.now().millisecondsSinceEpoch);
@@ -548,6 +570,7 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
       _loadNotificationCount(),
       _loadWalletBalance(),
       _loadTodayDeliveries(),
+      _loadPromotions(),
     ]);
 
     debugPrint('✅ Dados atualizados com sucesso!');
@@ -1203,6 +1226,11 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
                       _buildStatisticsCards(),
 
                     if (_commissionStats != null)
+                      const SizedBox(height: 20),
+
+                    // Seção de Promoções Ativas
+                    _buildPromotionsSection(),
+                    if (_promotions.isNotEmpty)
                       const SizedBox(height: 20),
 
                     // Seção "Entrega em andamento agora"
@@ -2393,6 +2421,461 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
           ),
         ],
       ),
+    );
+  }
+
+  // Seção de Promoções Ativas
+  Widget _buildPromotionsSection() {
+    if (_promotions.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Promoções Ativas',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const PromotionsPage()),
+                  );
+                },
+                child: const Text(
+                  'Ver todas',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ..._promotions.map((promotion) => _buildPromotionCard(promotion)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPromotionCard(Map<String, dynamic> promotion) {
+    final String type = promotion['type'] ?? '';
+    final String name = promotion['name'] ?? 'Promoção';
+    final String prize = promotion['prize'] ?? '';
+
+    // Determinar cor baseada no tipo
+    final Color cardColor;
+    final Color progressColor;
+    final IconData icon;
+
+    if (type == 'top_performer') {
+      cardColor = const Color(0xFFFFF3E0); // Laranja claro
+      progressColor = Colors.orange;
+      icon = Icons.emoji_events;
+    } else {
+      cardColor = const Color(0xFFF3E5F5); // Roxo claro
+      progressColor = AppColors.primary;
+      icon = Icons.local_shipping;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: progressColor.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: progressColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon,
+                  color: progressColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              // Badge de prêmio
+              if (prize.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.card_giftcard, size: 14, color: Colors.green),
+                      const SizedBox(width: 4),
+                      Text(
+                        prize,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.green,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (type == 'complete_and_win') ...[
+            // Barra de progresso para complete_and_win
+            _buildCompleteAndWinProgress(promotion, progressColor),
+          ] else if (type == 'top_performer') ...[
+            // Exibição de ranking para top_performer
+            _buildTopPerformerProgress(promotion, progressColor),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompleteAndWinProgress(Map<String, dynamic> promotion, Color color) {
+    // Pegar dados do progress se existir, senão usar valores da raiz
+    final Map<String, dynamic>? progressData = promotion['progress'];
+    final int goal = progressData?['goal'] ?? promotion['goal'] ?? 1;
+    final int current = progressData?['current'] ?? 0;
+    final int remaining = progressData?['remaining'] ?? (goal - current);
+    final double percentage = progressData?['percentage']?.toDouble() ??
+        (goal > 0 ? (current / goal * 100) : 0.0);
+    final bool goalReached = progressData?['goalReached'] ?? (current >= goal);
+
+    // Formatar datas válidas
+    final String validDates = promotion['validDates'] ?? '';
+    String formattedDates = '';
+    if (validDates.isNotEmpty) {
+      final dates = validDates.split(',');
+      final formattedList = dates.map((date) {
+        try {
+          final parts = date.split('-');
+          if (parts.length == 3) {
+            return '${parts[2]}/${parts[1]}';
+          }
+        } catch (_) {}
+        return date;
+      }).toList();
+      formattedDates = formattedList.join(', ');
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Datas válidas
+        if (formattedDates.isNotEmpty) ...[
+          Row(
+            children: [
+              Icon(Icons.calendar_today, size: 14, color: color),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Válido: $formattedDates',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+        // Linha com meta e progresso
+        Row(
+          children: [
+            // Coluna: Entregas feitas
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Suas entregas',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$current',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              height: 40,
+              width: 1,
+              color: AppColors.textSecondary.withOpacity(0.3),
+            ),
+            // Coluna: Meta
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Meta',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$goal',
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              height: 40,
+              width: 1,
+              color: AppColors.textSecondary.withOpacity(0.3),
+            ),
+            // Coluna: Faltam
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    goalReached ? 'Concluído!' : 'Faltam',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: goalReached ? Colors.green : AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    goalReached ? '0' : '$remaining',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: goalReached ? Colors.green : Colors.orange,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Barra de progresso
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: percentage / 100,
+            backgroundColor: color.withOpacity(0.2),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+            minHeight: 8,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${percentage.toStringAsFixed(1)}% concluído',
+          style: const TextStyle(
+            fontSize: 11,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTopPerformerProgress(Map<String, dynamic> promotion, Color color) {
+    // Pegar dados do progress se existir, senão usar valores da raiz
+    final Map<String, dynamic>? progressData = promotion['progress'];
+    final int current = progressData?['current'] ?? 0;
+    final int rank = progressData?['rank'] ?? 0;
+    final int leaderCount = progressData?['leaderCount'] ?? 0;
+
+    // Formatar datas válidas
+    final String validDates = promotion['validDates'] ?? '';
+    String formattedDates = '';
+    if (validDates.isNotEmpty) {
+      final dates = validDates.split(',');
+      final formattedList = dates.map((date) {
+        try {
+          final parts = date.split('-');
+          if (parts.length == 3) {
+            return '${parts[2]}/${parts[1]}';
+          }
+        } catch (_) {}
+        return date;
+      }).toList();
+      formattedDates = formattedList.join(', ');
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Datas válidas
+        if (formattedDates.isNotEmpty) ...[
+          Row(
+            children: [
+              Icon(Icons.calendar_today, size: 14, color: color),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Válido: $formattedDates',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+        // Linha com estatísticas
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Suas entregas',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$current',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              height: 40,
+              width: 1,
+              color: AppColors.textSecondary.withOpacity(0.3),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Sua posição',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (rank > 0 && rank <= 3)
+                        Icon(
+                          Icons.emoji_events,
+                          color: rank == 1
+                              ? Colors.amber
+                              : rank == 2
+                                  ? Colors.grey.shade400
+                                  : Colors.brown.shade300,
+                          size: 20,
+                        ),
+                      Text(
+                        rank > 0 ? '$rank°' : '-',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              height: 40,
+              width: 1,
+              color: AppColors.textSecondary.withOpacity(0.3),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const Text(
+                    'Participantes',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    leaderCount > 0 ? '$leaderCount' : '-',
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

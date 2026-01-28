@@ -30,6 +30,9 @@ class _TicketDetailsPageState extends State<TicketDetailsPage> {
   final ImagePicker _picker = ImagePicker();
   final ScrollController _scrollController = ScrollController();
 
+  // Cor primária roxa do design
+  static const Color _primaryPurple = Color(0xFF7C3AED);
+
   @override
   void initState() {
     super.initState();
@@ -273,7 +276,7 @@ class _TicketDetailsPageState extends State<TicketDetailsPage> {
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'open':
-        return Colors.green;
+        return const Color(0xFF10B981); // Verde
       case 'pending':
         return Colors.orange;
       case 'resolved':
@@ -283,6 +286,11 @@ class _TicketDetailsPageState extends State<TicketDetailsPage> {
       default:
         return Colors.orange;
     }
+  }
+
+  bool _canReply(String status) {
+    final lowerStatus = status.toLowerCase();
+    return lowerStatus != 'closed' && lowerStatus != 'resolved';
   }
 
   @override
@@ -403,7 +411,7 @@ class _TicketDetailsPageState extends State<TicketDetailsPage> {
                                 ),
                                 SizedBox(height: media.width * 0.02),
                                 Text(
-                                  'Ticket #${_ticket!.id.length > 8 ? _ticket!.id.substring(0, 8) : _ticket!.id}',
+                                  'Ticket #${_ticket!.ticketNumber.isNotEmpty ? _ticket!.ticketNumber : _ticket!.id}',
                                   style: GoogleFonts.notoSans(
                                     fontSize: media.width * twelve,
                                     color: textColor.withValues(alpha: 0.6),
@@ -450,125 +458,155 @@ class _TicketDetailsPageState extends State<TicketDetailsPage> {
                             ),
                           ),
 
-                          // Campo de resposta
-                          Container(
-                            padding: EdgeInsets.all(media.width * 0.03),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 5,
-                                  offset: const Offset(0, -2),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              children: [
-                                // Preview das imagens selecionadas
-                                if (_selectedImages.isNotEmpty) ...[
-                                  SizedBox(
-                                    height: media.width * 0.2,
-                                    child: ListView.builder(
-                                      scrollDirection: Axis.horizontal,
-                                      itemCount: _selectedImages.length,
-                                      itemBuilder: (context, index) {
-                                        return Container(
-                                          margin: EdgeInsets.only(right: media.width * 0.02),
-                                          child: Stack(
-                                            children: [
-                                              ClipRRect(
-                                                borderRadius: BorderRadius.circular(8),
-                                                child: Image.file(
-                                                  _selectedImages[index],
-                                                  width: media.width * 0.2,
-                                                  height: media.width * 0.2,
-                                                  fit: BoxFit.cover,
+                          // Campo de resposta (apenas se o ticket estiver aberto)
+                          if (_canReply(_ticket!.status))
+                            Container(
+                              padding: EdgeInsets.all(media.width * 0.03),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.1),
+                                    blurRadius: 5,
+                                    offset: const Offset(0, -2),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                children: [
+                                  // Preview das imagens selecionadas
+                                  if (_selectedImages.isNotEmpty) ...[
+                                    SizedBox(
+                                      height: media.width * 0.2,
+                                      child: ListView.builder(
+                                        scrollDirection: Axis.horizontal,
+                                        itemCount: _selectedImages.length,
+                                        itemBuilder: (context, index) {
+                                          return Container(
+                                            margin: EdgeInsets.only(right: media.width * 0.02),
+                                            child: Stack(
+                                              children: [
+                                                ClipRRect(
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  child: Image.file(
+                                                    _selectedImages[index],
+                                                    width: media.width * 0.2,
+                                                    height: media.width * 0.2,
+                                                    fit: BoxFit.cover,
+                                                  ),
                                                 ),
-                                              ),
-                                              Positioned(
-                                                top: 3,
-                                                right: 3,
-                                                child: InkWell(
-                                                  onTap: () => _removeImage(index),
-                                                  child: Container(
-                                                    padding: const EdgeInsets.all(3),
-                                                    decoration: const BoxDecoration(
-                                                      color: Colors.red,
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                    child: const Icon(
-                                                      Icons.close,
-                                                      color: Colors.white,
-                                                      size: 12,
+                                                Positioned(
+                                                  top: 3,
+                                                  right: 3,
+                                                  child: InkWell(
+                                                    onTap: () => _removeImage(index),
+                                                    child: Container(
+                                                      padding: const EdgeInsets.all(3),
+                                                      decoration: const BoxDecoration(
+                                                        color: Colors.red,
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: const Icon(
+                                                        Icons.close,
+                                                        color: Colors.white,
+                                                        size: 12,
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
-                                              ),
-                                            ],
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    SizedBox(height: media.width * 0.02),
+                                  ],
+
+                                  // Campo de texto e botões
+                                  Row(
+                                    children: [
+                                      IconButton(
+                                        onPressed: _showImageSourceDialog,
+                                        icon: Icon(
+                                          Icons.add_photo_alternate,
+                                          color: _primaryPurple,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: TextField(
+                                          controller: _replyController,
+                                          maxLines: null,
+                                          decoration: InputDecoration(
+                                            hintText: 'Digite sua resposta...',
+                                            hintStyle: GoogleFonts.notoSans(
+                                              color: textColor.withValues(alpha: 0.5),
+                                            ),
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(25),
+                                              borderSide: BorderSide(color: borderLines),
+                                            ),
+                                            contentPadding: EdgeInsets.symmetric(
+                                              horizontal: media.width * 0.04,
+                                              vertical: media.width * 0.02,
+                                            ),
                                           ),
-                                        );
-                                      },
+                                          style: GoogleFonts.notoSans(
+                                            fontSize: media.width * fourteen,
+                                            color: textColor,
+                                          ),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        onPressed: _isSending ? null : _sendReply,
+                                        icon: _isSending
+                                            ? SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child: CircularProgressIndicator(
+                                                  color: _primaryPurple,
+                                                  strokeWidth: 2,
+                                                ),
+                                              )
+                                            : Icon(
+                                                Icons.send,
+                                                color: _primaryPurple,
+                                              ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            )
+                          else
+                            // Mensagem informando que o ticket está fechado
+                            Container(
+                              padding: EdgeInsets.all(media.width * 0.04),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                border: Border(
+                                  top: BorderSide(color: borderLines),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.lock_outline,
+                                    size: media.width * 0.045,
+                                    color: textColor.withValues(alpha: 0.5),
+                                  ),
+                                  SizedBox(width: media.width * 0.02),
+                                  Text(
+                                    'Este ticket foi ${_ticket!.status.toLowerCase() == 'closed' ? 'fechado' : 'resolvido'}',
+                                    style: GoogleFonts.notoSans(
+                                      fontSize: media.width * fourteen,
+                                      color: textColor.withValues(alpha: 0.5),
                                     ),
                                   ),
-                                  SizedBox(height: media.width * 0.02),
                                 ],
-
-                                // Campo de texto e botões
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      onPressed: _showImageSourceDialog,
-                                      icon: Icon(
-                                        Icons.add_photo_alternate,
-                                        color: buttonColor,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: TextField(
-                                        controller: _replyController,
-                                        maxLines: null,
-                                        decoration: InputDecoration(
-                                          hintText: 'Digite sua resposta...',
-                                          hintStyle: GoogleFonts.notoSans(
-                                            color: textColor.withValues(alpha: 0.5),
-                                          ),
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(25),
-                                            borderSide: BorderSide(color: borderLines),
-                                          ),
-                                          contentPadding: EdgeInsets.symmetric(
-                                            horizontal: media.width * 0.04,
-                                            vertical: media.width * 0.02,
-                                          ),
-                                        ),
-                                        style: GoogleFonts.notoSans(
-                                          fontSize: media.width * fourteen,
-                                          color: textColor,
-                                        ),
-                                      ),
-                                    ),
-                                    IconButton(
-                                      onPressed: _isSending ? null : _sendReply,
-                                      icon: _isSending
-                                          ? SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                color: buttonColor,
-                                                strokeWidth: 2,
-                                              ),
-                                            )
-                                          : Icon(
-                                              Icons.send,
-                                              color: buttonColor,
-                                            ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                              ),
                             ),
-                          ),
                         ] else if (!_isLoading)
                           Expanded(
                             child: Center(
@@ -659,10 +697,10 @@ class _TicketDetailsPageState extends State<TicketDetailsPage> {
             child: Container(
               padding: EdgeInsets.all(media.width * 0.03),
               decoration: BoxDecoration(
-                color: isDriver ? buttonColor.withValues(alpha: 0.1) : Colors.white,
+                color: isDriver ? _primaryPurple.withValues(alpha: 0.1) : Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isDriver ? buttonColor.withValues(alpha: 0.3) : borderLines,
+                  color: isDriver ? _primaryPurple.withValues(alpha: 0.3) : borderLines,
                   width: 1,
                 ),
               ),
@@ -675,7 +713,7 @@ class _TicketDetailsPageState extends State<TicketDetailsPage> {
                     style: GoogleFonts.notoSans(
                       fontSize: media.width * twelve,
                       fontWeight: FontWeight.bold,
-                      color: isDriver ? buttonColor : Colors.blue,
+                      color: isDriver ? _primaryPurple : Colors.blue,
                     ),
                   ),
                   SizedBox(height: media.width * 0.01),
@@ -740,7 +778,7 @@ class _TicketDetailsPageState extends State<TicketDetailsPage> {
           if (isDriver) ...[
             SizedBox(width: media.width * 0.02),
             CircleAvatar(
-              backgroundColor: buttonColor,
+              backgroundColor: _primaryPurple,
               radius: media.width * 0.05,
               child: Icon(
                 Icons.person,

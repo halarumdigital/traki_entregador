@@ -28,6 +28,9 @@ class _CreateSupportTicketPageState extends State<CreateSupportTicketPage> {
   final List<File> _selectedImages = [];
   final ImagePicker _picker = ImagePicker();
 
+  // Cor primária roxa do design
+  static const Color _primaryPurple = Color(0xFF7C3AED);
+
   @override
   void initState() {
     super.initState();
@@ -390,11 +393,16 @@ class _CreateSupportTicketPageState extends State<CreateSupportTicketPage> {
                                     ),
                                     TextButton.icon(
                                       onPressed: _showImageSourceDialog,
-                                      icon: Icon(Icons.add_photo_alternate, size: media.width * 0.05),
+                                      icon: Icon(
+                                        Icons.add_photo_alternate,
+                                        size: media.width * 0.05,
+                                        color: _primaryPurple,
+                                      ),
                                       label: Text(
                                         'Adicionar',
                                         style: GoogleFonts.notoSans(
                                           fontSize: media.width * fourteen,
+                                          color: _primaryPurple,
                                         ),
                                       ),
                                     ),
@@ -457,10 +465,10 @@ class _CreateSupportTicketPageState extends State<CreateSupportTicketPage> {
                                   child: ElevatedButton(
                                     onPressed: _isSending ? null : _createTicket,
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: buttonColor,
-                                      padding: EdgeInsets.symmetric(vertical: media.width * 0.04),
+                                      backgroundColor: _primaryPurple,
+                                      padding: EdgeInsets.symmetric(vertical: media.width * 0.045),
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.circular(30),
                                       ),
                                     ),
                                     child: _isSending

@@ -83,10 +83,13 @@ class _SupportTicketsPageState extends State<SupportTicketsPage> {
     }
   }
 
+  // Cor primária roxa do design
+  static const Color _primaryPurple = Color(0xFF7C3AED);
+
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'open':
-        return Colors.green;
+        return const Color(0xFF10B981); // Verde
       case 'pending':
         return Colors.orange;
       case 'resolved':
@@ -144,7 +147,7 @@ class _SupportTicketsPageState extends State<SupportTicketsPage> {
                               width: media.width * 1,
                               alignment: Alignment.center,
                               child: MyText(
-                                text: 'Meus Tickets',
+                                text: 'Tickets',
                                 size: media.width * twenty,
                                 fontweight: FontWeight.w600,
                               ),
@@ -152,9 +155,9 @@ class _SupportTicketsPageState extends State<SupportTicketsPage> {
                             Positioned(
                               child: InkWell(
                                 onTap: () {
-                                  Navigator.pop(context);
+                                  Scaffold.of(context).openDrawer();
                                 },
-                                child: Icon(Icons.arrow_back_ios, color: textColor),
+                                child: Icon(Icons.menu, color: textColor),
                               ),
                             )
                           ],
@@ -212,19 +215,18 @@ class _SupportTicketsPageState extends State<SupportTicketsPage> {
                                         margin: EdgeInsets.only(bottom: media.width * 0.04),
                                         decoration: BoxDecoration(
                                           color: Colors.white,
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: borderLines, width: 1.2),
+                                          borderRadius: BorderRadius.circular(16),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.black.withValues(alpha: 0.05),
-                                              blurRadius: 5,
+                                              color: Colors.black.withValues(alpha: 0.08),
+                                              blurRadius: 10,
                                               offset: const Offset(0, 2),
                                             ),
                                           ],
                                         ),
                                         child: InkWell(
                                           onTap: () => _navigateToTicketDetails(ticket),
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(16),
                                           child: Padding(
                                             padding: EdgeInsets.all(media.width * 0.04),
                                             child: Column(
@@ -247,7 +249,7 @@ class _SupportTicketsPageState extends State<SupportTicketsPage> {
                                                           ),
                                                           SizedBox(height: media.width * 0.01),
                                                           Text(
-                                                            'Ticket #${ticket.id.length > 8 ? ticket.id.substring(0, 8) : ticket.id}',
+                                                            'Ticket #${ticket.ticketNumber.isNotEmpty ? ticket.ticketNumber : ticket.id}',
                                                             style: GoogleFonts.notoSans(
                                                               fontSize: media.width * twelve,
                                                               color: textColor.withValues(alpha: 0.5),
@@ -256,85 +258,65 @@ class _SupportTicketsPageState extends State<SupportTicketsPage> {
                                                         ],
                                                       ),
                                                     ),
-                                                    Container(
-                                                      padding: EdgeInsets.symmetric(
-                                                        horizontal: media.width * 0.03,
-                                                        vertical: media.width * 0.015,
-                                                      ),
-                                                      decoration: BoxDecoration(
-                                                        color: statusColor.withValues(alpha: 0.1),
-                                                        borderRadius: BorderRadius.circular(20),
-                                                        border: Border.all(
+                                                    Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Icon(
+                                                          statusIcon,
+                                                          size: media.width * 0.045,
                                                           color: statusColor,
-                                                          width: 1,
                                                         ),
-                                                      ),
-                                                      child: Row(
-                                                        mainAxisSize: MainAxisSize.min,
-                                                        children: [
-                                                          Icon(
-                                                            statusIcon,
-                                                            size: media.width * 0.035,
+                                                        SizedBox(width: media.width * 0.01),
+                                                        Text(
+                                                          ticket.getStatusText(),
+                                                          style: GoogleFonts.notoSans(
+                                                            fontSize: media.width * fourteen,
                                                             color: statusColor,
+                                                            fontWeight: FontWeight.w600,
                                                           ),
-                                                          SizedBox(width: media.width * 0.01),
-                                                          Text(
-                                                            ticket.getStatusText(),
-                                                            style: GoogleFonts.notoSans(
-                                                              fontSize: media.width * twelve,
-                                                              color: statusColor,
-                                                              fontWeight: FontWeight.bold,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
+                                                        ),
+                                                      ],
                                                     ),
                                                   ],
                                                 ),
                                                 SizedBox(height: media.width * 0.03),
-                                                // Mensagem
-                                                Text(
-                                                  ticket.message,
-                                                  maxLines: 2,
-                                                  overflow: TextOverflow.ellipsis,
-                                                  style: GoogleFonts.notoSans(
-                                                    fontSize: media.width * fourteen,
-                                                    color: textColor.withValues(alpha: 0.7),
+                                                // Imagem anexada (se houver)
+                                                if (ticket.images.isNotEmpty)
+                                                  Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.attach_file,
+                                                        size: media.width * 0.04,
+                                                        color: _primaryPurple,
+                                                      ),
+                                                      SizedBox(width: media.width * 0.01),
+                                                      Text(
+                                                        'Imagem anexada',
+                                                        style: GoogleFonts.notoSans(
+                                                          fontSize: media.width * fourteen,
+                                                          color: _primaryPurple,
+                                                          fontWeight: FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
-                                                ),
-                                                SizedBox(height: media.width * 0.03),
-                                                // Informações adicionais
+                                                SizedBox(height: media.width * 0.02),
+                                                // Tempo
                                                 Row(
                                                   children: [
                                                     Icon(
                                                       Icons.access_time,
                                                       size: media.width * 0.04,
-                                                      color: textColor.withValues(alpha: 0.5),
+                                                      color: textColor.withValues(alpha: 0.4),
                                                     ),
-                                                    SizedBox(width: media.width * 0.01),
+                                                    SizedBox(width: media.width * 0.015),
                                                     Text(
                                                       _formatDate(ticket.createdAt),
                                                       style: GoogleFonts.notoSans(
                                                         fontSize: media.width * twelve,
-                                                        color: textColor.withValues(alpha: 0.5),
+                                                        color: textColor.withValues(alpha: 0.4),
                                                       ),
                                                     ),
-                                                    if (ticket.replies.isNotEmpty) ...[
-                                                      SizedBox(width: media.width * 0.04),
-                                                      Icon(
-                                                        Icons.chat_bubble_outline,
-                                                        size: media.width * 0.04,
-                                                        color: textColor.withValues(alpha: 0.5),
-                                                      ),
-                                                      SizedBox(width: media.width * 0.01),
-                                                      Text(
-                                                        '${ticket.replies.length} ${ticket.replies.length == 1 ? 'resposta' : 'respostas'}',
-                                                        style: GoogleFonts.notoSans(
-                                                          fontSize: media.width * twelve,
-                                                          color: textColor.withValues(alpha: 0.5),
-                                                        ),
-                                                      ),
-                                                    ],
                                                   ],
                                                 ),
                                               ],
@@ -352,18 +334,36 @@ class _SupportTicketsPageState extends State<SupportTicketsPage> {
 
                   // Botão flutuante para criar novo ticket
                   Positioned(
-                    bottom: media.width * 0.05,
-                    right: media.width * 0.05,
-                    child: FloatingActionButton.extended(
+                    bottom: media.width * 0.08,
+                    left: media.width * 0.1,
+                    right: media.width * 0.1,
+                    child: ElevatedButton(
                       onPressed: _navigateToCreateTicket,
-                      backgroundColor: buttonColor,
-                      icon: const Icon(Icons.add, color: Colors.white),
-                      label: Text(
-                        'Novo Ticket',
-                        style: GoogleFonts.notoSans(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primaryPurple,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(
+                          vertical: media.width * 0.045,
                         ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        elevation: 4,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.add, color: Colors.white),
+                          SizedBox(width: media.width * 0.02),
+                          Text(
+                            'Novo Ticket',
+                            style: GoogleFonts.notoSans(
+                              color: Colors.white,
+                              fontSize: media.width * sixteen,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

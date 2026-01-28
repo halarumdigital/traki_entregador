@@ -99,6 +99,7 @@ class TicketReply {
 /// Modelo para representar um ticket de suporte
 class SupportTicket {
   final String id;
+  final String ticketNumber;
   final String subjectId;
   final String subjectName;
   final String message;
@@ -110,6 +111,7 @@ class SupportTicket {
 
   SupportTicket({
     required this.id,
+    required this.ticketNumber,
     required this.subjectId,
     required this.subjectName,
     required this.message,
@@ -162,6 +164,7 @@ class SupportTicket {
 
     return SupportTicket(
       id: json['id']?.toString() ?? '',
+      ticketNumber: json['ticketNumber']?.toString() ?? json['ticket_number']?.toString() ?? json['number']?.toString() ?? '',
       subjectId: json['subjectId']?.toString() ?? json['subject_id']?.toString() ?? '',
       subjectName: json['subjectName'] ?? json['subject_name'] ?? '',
       message: json['message'] ?? '',
@@ -181,6 +184,7 @@ class SupportTicket {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'ticketNumber': ticketNumber,
       'subjectId': subjectId,
       'subjectName': subjectName,
       'message': message,

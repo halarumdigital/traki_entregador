@@ -39,16 +39,30 @@ class _CarteiraPageState extends State<CarteiraPage> {
         final balanceResponse = results[0] as Map<String, dynamic>?;
 
         setState(() {
-          if (balanceResponse != null && balanceResponse['success'] == true) {
-            _balanceData = balanceResponse['data'] as Map<String, dynamic>?;
-          } else {
-            _balanceData = balanceResponse;
+          // getDriverBalance() já retorna o 'data' diretamente, não o wrapper
+          // API retorna: availableBalance, blockedBalance, status, canWithdrawToday
+          if (balanceResponse != null) {
+            // Converter formato da API para o formato esperado pelo widget
+            final double availableBalance = double.tryParse(balanceResponse['availableBalance']?.toString() ?? '0') ?? 0;
+            final bool canWithdrawToday = balanceResponse['canWithdrawToday'] == true;
+
+            _balanceData = {
+              'saldoDisponivel': availableBalance,
+              'saque': {
+                'podeSacarHoje': canWithdrawToday,
+                'valorDisponivelParaSaque': availableBalance,
+                'taxaSaque': 1.50,
+                'mensagem': balanceResponse['withdrawMessage'] ?? '',
+              },
+              'hasPixKey': balanceResponse['hasPixKey'] == true,
+            };
           }
           _withdrawHistory = results[1] as List<dynamic>;
           _isLoading = false;
         });
       }
     } catch (e) {
+      debugPrint('Erro ao carregar carteira: $e');
       if (mounted) {
         setState(() {
           _error = 'Erro ao carregar dados';
@@ -66,10 +80,8 @@ class _CarteiraPageState extends State<CarteiraPage> {
 
     final bool podeSacar = saque['podeSacarHoje'] ?? false;
     final double valorDisponivel = (saque['valorDisponivelParaSaque'] ?? 0).toDouble();
-    final double taxaSaque = (saque['taxaSaque'] ?? 1.50).toDouble();
     final String mensagem = saque['mensagem'] ?? '';
-    final String pixKey = _balanceData!['pixKey']?.toString() ?? '';
-    final String pixKeyType = _balanceData!['pixKeyType']?.toString() ?? '';
+    final bool hasPixKey = _balanceData!['hasPixKey'] == true;
 
     if (!podeSacar) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -91,6 +103,72 @@ class _CarteiraPageState extends State<CarteiraPage> {
       return;
     }
 
+    // Verificar se tem chave PIX cadastrada
+    if (!hasPixKey) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+              const SizedBox(width: 10),
+              const Text('Atenção'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.withOpacity(0.3)),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.pix, color: Colors.red, size: 40),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'VOCÊ NÃO TEM CHAVE PIX CADASTRADA!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Navegue até o seu perfil e cadastre para poder sacar.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.black87,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Entendi'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -106,78 +184,12 @@ class _CarteiraPageState extends State<CarteiraPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.orange.withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: Colors.orange),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Taxa de saque: R\$ ${taxaSaque.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.orange,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            _buildInfoRow('Valor disponível:', 'R\$ ${valorDisponivel.toStringAsFixed(2)}'),
-            const SizedBox(height: 8),
-            _buildInfoRow('Taxa:', '- R\$ ${taxaSaque.toStringAsFixed(2)}'),
-            const Divider(height: 24),
             _buildInfoRow(
-              'Você receberá:',
+              'Valor total para saque:',
               'R\$ ${valorDisponivel.toStringAsFixed(2)}',
               isTotal: true,
             ),
             const SizedBox(height: 16),
-            if (pixKey.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.pix, color: Colors.green, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Chave PIX de destino${pixKeyType.isNotEmpty ? ' ($pixKeyType)' : ''}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.green[700],
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            pixKey,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.green,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            if (pixKey.isNotEmpty) const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -213,7 +225,7 @@ class _CarteiraPageState extends State<CarteiraPage> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _performWithdraw();
+              _performWithdraw(valorDisponivel);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -251,12 +263,12 @@ class _CarteiraPageState extends State<CarteiraPage> {
     );
   }
 
-  Future<void> _performWithdraw() async {
+  Future<void> _performWithdraw(double amount) async {
     setState(() {
       _isWithdrawing = true;
     });
 
-    final result = await requestDriverWithdraw();
+    final result = await requestDriverWithdraw(amount);
 
     if (mounted) {
       setState(() {

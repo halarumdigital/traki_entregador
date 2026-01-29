@@ -4481,6 +4481,83 @@ getHistoryPages(id) async {
   return result;
 }
 
+//get driver wallet balance
+
+Map<String, dynamic> driverWallet = {};
+
+getDriverWallet() async {
+  dynamic result;
+  try {
+    debugPrint('🔵 getDriverWallet - Chamando getDriverBalance()...');
+
+    // Usa getDriverBalance() que já funciona corretamente
+    var balanceData = await getDriverBalance();
+
+    if (balanceData != null) {
+      driverWallet = balanceData;
+      debugPrint('🟢 getDriverWallet - driverWallet: $driverWallet');
+      result = 'success';
+      valueNotifierHome.incrementNotifier();
+    } else {
+      debugPrint('🔴 getDriverWallet - balanceData é null');
+      result = 'failure';
+    }
+  } catch (e) {
+    debugPrint('🔴 getDriverWallet - Exception: $e');
+    if (e is SocketException) {
+      internet = false;
+      result = 'no internet';
+      valueNotifierHome.incrementNotifier();
+    } else {
+      result = 'failure';
+    }
+  }
+  return result;
+}
+
+requestDriverWalletWithdraw(double amount, {String? pixKey, String? pixKeyType}) async {
+  dynamic result;
+  try {
+    String driverId = userDetails['id'].toString();
+
+    Map<String, dynamic> body = {'amount': amount};
+    if (pixKey != null) body['pixKey'] = pixKey;
+    if (pixKeyType != null) body['pixKeyType'] = pixKeyType;
+
+    var response = await http.post(
+        Uri.parse('${url}api/v1/driver/wallet/withdraw'),
+        headers: {
+          'Authorization': 'Bearer ${bearerToken[0].token}',
+          'Content-Type': 'application/json',
+          'driver-id': driverId,
+        },
+        body: jsonEncode(body));
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      var responseBody = jsonDecode(response.body);
+      if (responseBody['success'] == true) {
+        result = 'success';
+      } else {
+        result = responseBody['message'] ?? 'failure';
+      }
+      valueNotifierHome.incrementNotifier();
+    } else if (response.statusCode == 401) {
+      result = 'logout';
+    } else {
+      var responseBody = jsonDecode(response.body);
+      result = responseBody['message'] ?? 'failure';
+      debugPrint(response.body);
+      valueNotifierHome.incrementNotifier();
+    }
+  } catch (e) {
+    if (e is SocketException) {
+      internet = false;
+      result = 'no internet';
+      valueNotifierHome.incrementNotifier();
+    }
+  }
+  return result;
+}
+
 //get wallet history
 
 Map<String, dynamic> walletBalance = {};
@@ -6382,11 +6459,25 @@ Future<Map<String, dynamic>?> getDriverBalance() async {
       return null;
     }
 
+    // Tenta pegar o driverId de userDetails primeiro, depois do LocalStorageService
+    String? driverId = userDetails['id']?.toString();
+    if (driverId == null || driverId.isEmpty || driverId == 'null') {
+      driverId = await LocalStorageService.getDriverId();
+    }
+
+    debugPrint('💰 driverId: $driverId');
+
+    if (driverId == null || driverId.isEmpty) {
+      debugPrint('❌ Driver ID não encontrado');
+      return null;
+    }
+
     var response = await http.get(
-      Uri.parse('${url}api/v1/driver/balance'),
+      Uri.parse('${url}api/v1/driver/wallet'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
+        'driver-id': driverId,
       },
     );
 
@@ -6395,8 +6486,11 @@ Future<Map<String, dynamic>?> getDriverBalance() async {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      debugPrint('✅ Saldo carregado com sucesso');
-      return data;
+      if (data['success'] == true) {
+        debugPrint('✅ Saldo carregado com sucesso');
+        return data['data'];
+      }
+      return null;
     } else if (response.statusCode == 401) {
       debugPrint('❌ Token expirado');
       return null;
@@ -6421,11 +6515,25 @@ Future<List<dynamic>> getWithdrawHistory() async {
       return [];
     }
 
+    // Tenta pegar o driverId de userDetails primeiro, depois do LocalStorageService
+    String? driverId = userDetails['id']?.toString();
+    if (driverId == null || driverId.isEmpty || driverId == 'null') {
+      driverId = await LocalStorageService.getDriverId();
+    }
+
+    debugPrint('📜 driverId: $driverId');
+
+    if (driverId == null || driverId.isEmpty) {
+      debugPrint('❌ Driver ID não encontrado');
+      return [];
+    }
+
     var response = await http.get(
-      Uri.parse('${url}api/v1/driver/withdraw-history'),
+      Uri.parse('${url}api/v1/driver/wallet/withdrawals'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
+        'driver-id': driverId,
       },
     );
 
@@ -6449,9 +6557,9 @@ Future<List<dynamic>> getWithdrawHistory() async {
 }
 
 /// Realiza uma solicitação de saque (novo endpoint)
-Future<Map<String, dynamic>> requestDriverWithdraw() async {
+Future<Map<String, dynamic>> requestDriverWithdraw(double amount) async {
   try {
-    debugPrint('💸 Solicitando saque...');
+    debugPrint('💸 Solicitando saque de R\$ $amount...');
 
     final token = await LocalStorageService.getAccessToken();
     if (token == null) {
@@ -6462,12 +6570,32 @@ Future<Map<String, dynamic>> requestDriverWithdraw() async {
       };
     }
 
+    // Tenta pegar o driverId de userDetails primeiro, depois do LocalStorageService
+    String? driverId = userDetails['id']?.toString();
+    if (driverId == null || driverId.isEmpty || driverId == 'null') {
+      driverId = await LocalStorageService.getDriverId();
+    }
+
+    debugPrint('💸 driverId: $driverId');
+
+    if (driverId == null || driverId.isEmpty) {
+      debugPrint('❌ Driver ID não encontrado');
+      return {
+        'success': false,
+        'message': 'Sessão expirada. Faça login novamente.',
+      };
+    }
+
     var response = await http.post(
-      Uri.parse('${url}api/v1/driver/withdraw'),
+      Uri.parse('${url}api/v1/driver/wallet/withdraw'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
+        'driver-id': driverId,
       },
+      body: jsonEncode({
+        'amount': amount,
+      }),
     );
 
     debugPrint('📥 Status Code: ${response.statusCode}');

@@ -294,18 +294,27 @@ class _HomeSimpleState extends State<HomeSimple> with WidgetsBindingObserver {
 
       if (mounted) {
         setState(() {
-          // A API retorna { success: true, data: { ... } }
-          if (balanceResponse != null && balanceResponse['success'] == true) {
-            _balanceData = balanceResponse['data'] as Map<String, dynamic>?;
-          } else {
-            _balanceData = balanceResponse;
+          // getDriverBalance() já retorna o 'data' diretamente, não o wrapper
+          // API retorna: availableBalance, blockedBalance, status, canWithdrawToday
+          if (balanceResponse != null) {
+            // Converter formato da API para o formato esperado pelo widget
+            final double availableBalance = double.tryParse(balanceResponse['availableBalance']?.toString() ?? '0') ?? 0;
+            final bool canWithdrawToday = balanceResponse['canWithdrawToday'] == true;
+
+            _balanceData = {
+              'saldoDisponivel': availableBalance,
+              'saque': {
+                'podeSacarHoje': canWithdrawToday,
+                'valorDisponivelParaSaque': availableBalance,
+                'taxaSaque': 1.50,
+                'mensagem': balanceResponse['withdrawMessage'] ?? '',
+              },
+              'hasPixKey': balanceResponse['hasPixKey'] == true,
+            };
+            debugPrint('✅ Saldo carregado: $availableBalance');
           }
           _isLoadingBalance = false;
         });
-
-        if (_balanceData != null) {
-          debugPrint('✅ Saldo carregado: ${_balanceData!['saldoDisponivel']}');
-        }
       }
     } catch (e) {
       debugPrint('❌ Erro ao carregar saldo: $e');

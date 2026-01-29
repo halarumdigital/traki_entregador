@@ -68,7 +68,8 @@
       "mcp__figma__download_figma_images",
       "Bash(file:*)",
       "WebFetch(domain:www.figma.com)",
-      "Bash(dart analyze:*)"
+      "Bash(dart analyze:*)",
+      "Bash(/home/gilliard/Develop/flutter/bin/flutter analyze:*)"
     ],
     "deny": [],
     "ask": []

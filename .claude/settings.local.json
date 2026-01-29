@@ -69,7 +69,8 @@
       "Bash(file:*)",
       "WebFetch(domain:www.figma.com)",
       "Bash(dart analyze:*)",
-      "Bash(/home/gilliard/Develop/flutter/bin/flutter analyze:*)"
+      "Bash(/home/gilliard/Develop/flutter/bin/flutter analyze:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

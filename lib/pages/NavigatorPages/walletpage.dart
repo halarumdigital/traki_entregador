@@ -58,12 +58,20 @@ class _WalletPageState extends State<WalletPage> {
     }
     // });
 
+    // Buscar saldo da wallet do driver (novo endpoint)
+    var walletResult = await getDriverWallet();
+    if (walletResult == 'logout') {
+      navigateLogout();
+      return;
+    }
+
+    // Buscar histórico da wallet
     var val = await getWalletHistory();
     if (val == 'logout') {
       navigateLogout();
     }
     if (mounted) {
-      if (val == 'success') {
+      if (val == 'success' || walletResult == 'success') {
         isLoading = false;
         valueNotifierHome.incrementNotifier();
       }
@@ -185,7 +193,7 @@ class _WalletPageState extends State<WalletPage> {
                                             SizedBox(
                                               height: media.width * 0.03,
                                             ),
-                                            if (walletBalance.isNotEmpty)
+                                            if (driverWallet.isNotEmpty)
                                               Container(
                                                 height: media.width * 0.1,
                                                 width: media.width * 0.9,
@@ -196,7 +204,7 @@ class _WalletPageState extends State<WalletPage> {
                                                 ),
                                                 child: MyText(
                                                   text:
-                                                      '${walletBalance['currency_symbol']} ${walletBalance['wallet_balance'].toString()}',
+                                                      'R\$ ${driverWallet['availableBalance'] ?? '0.00'}',
                                                   size: media.width * twenty,
                                                   fontweight: FontWeight.w600,
                                                 ),

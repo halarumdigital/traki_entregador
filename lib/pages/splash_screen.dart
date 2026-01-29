@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import '../services/registration_status_service.dart';
 import '../services/location_permission_service.dart';
 import '../services/driver_block_service.dart';
+import '../services/app_version_service.dart';
 import '../styles/styles.dart';
 import 'landing/landing_page_new.dart';
 import 'login/login.dart';
 import 'login/approval_status_screen.dart';
 import 'home_simple.dart';
+import 'update_required_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -25,6 +27,23 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _checkNavigationStatus() async {
     // Aguardar um pouco para mostrar splash
     await Future.delayed(const Duration(seconds: 2));
+
+    if (!mounted) return;
+
+    // 0. Verificar se precisa atualizar o app
+    final versionInfo = await AppVersionService.checkVersion();
+    if (versionInfo != null && versionInfo.forceUpdate) {
+      debugPrint('🔄 [SplashScreen] Atualização obrigatória necessária');
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => UpdateRequiredScreen(versionInfo: versionInfo),
+          ),
+        );
+      }
+      return;
+    }
 
     if (!mounted) return;
 

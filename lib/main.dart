@@ -19,6 +19,7 @@ import 'utils/notification_handler.dart';
 import 'dart:io';
 import 'package:provider/provider.dart';
 import 'providers/delivery_stop_provider.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 // Variável global para armazenar notificação pendente
 Map<String, dynamic>? pendingNotificationData;
@@ -83,7 +84,15 @@ void main() async {
 
   Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-  runApp(const MyApp());
+
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = 'https://fef877935c4b0891ffdf8502d883189b@o4510357593260032.ingest.us.sentry.io/4510795183030272';
+      options.tracesSampleRate = 1.0;
+      options.profilesSampleRate = 1.0;
+    },
+    appRunner: () => runApp(const MyApp()),
+  );
 }
 
 class MyApp extends StatefulWidget {

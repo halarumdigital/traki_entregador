@@ -74,6 +74,7 @@ dependencies:
   provider: ^6.1.5+1
   cookie_jar: ^4.0.8
   dio_cookie_manager: ^3.3.0
+  sentry_flutter: ^8.12.0
 
 dependency_overrides:
 #  wake_lock package depend on package_info latest version but we used lower version so it ovverride

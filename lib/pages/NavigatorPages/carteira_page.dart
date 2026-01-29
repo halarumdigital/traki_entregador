@@ -620,8 +620,11 @@ class _CarteiraPageState extends State<CarteiraPage> {
   }
 
   Widget _buildWithdrawHistoryItem(dynamic withdraw) {
-    final double valor = (withdraw['valor'] ?? withdraw['valorRecebido'] ?? 0).toDouble();
+    // Aceita tanto 'amount' (API) quanto 'valor'/'valorRecebido' (legado)
+    final double valor = double.tryParse(withdraw['amount']?.toString() ?? '') ??
+                         (withdraw['valor'] ?? withdraw['valorRecebido'] ?? 0).toDouble();
     final String data = withdraw['createdAt'] ?? withdraw['data'] ?? '';
+    final String status = withdraw['status']?.toString().toLowerCase() ?? 'pending';
 
     String formattedDate = '00/00/0000';
     String formattedTime = '00:00';
@@ -633,6 +636,38 @@ class _CarteiraPageState extends State<CarteiraPage> {
       }
     } catch (e) {
       // Mantém valores padrão
+    }
+
+    // Cores e texto baseados no status
+    Color statusColor;
+    String statusText;
+    IconData statusIcon;
+
+    switch (status) {
+      case 'completed':
+      case 'approved':
+      case 'paid':
+        statusColor = Colors.green;
+        statusText = 'Concluído';
+        statusIcon = Icons.check_circle;
+        break;
+      case 'pending':
+      case 'processing':
+        statusColor = Colors.orange;
+        statusText = 'Pendente';
+        statusIcon = Icons.pending;
+        break;
+      case 'rejected':
+      case 'failed':
+      case 'cancelled':
+        statusColor = Colors.red;
+        statusText = 'Rejeitado';
+        statusIcon = Icons.cancel;
+        break;
+      default:
+        statusColor = Colors.grey;
+        statusText = 'Processando';
+        statusIcon = Icons.hourglass_empty;
     }
 
     return Container(
@@ -655,17 +690,14 @@ class _CarteiraPageState extends State<CarteiraPage> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: const Color(0xFFFFC107).withOpacity(0.2),
+              color: statusColor.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Center(
-              child: Text(
-                '\$',
-                style: TextStyle(
-                  color: Color(0xFFFFC107),
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+            child: Center(
+              child: Icon(
+                statusIcon,
+                color: statusColor,
+                size: 24,
               ),
             ),
           ),
@@ -674,13 +706,33 @@ class _CarteiraPageState extends State<CarteiraPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        statusText,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: statusColor,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Row(

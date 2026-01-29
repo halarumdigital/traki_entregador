@@ -6529,7 +6529,7 @@ Future<List<dynamic>> getWithdrawHistory() async {
     }
 
     var response = await http.get(
-      Uri.parse('${url}api/v1/driver/wallet/withdrawals'),
+      Uri.parse('${url}api/v1/driver/wallet/withdrawals?limit=20'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',

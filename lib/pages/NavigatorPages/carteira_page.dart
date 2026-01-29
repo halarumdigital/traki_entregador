@@ -14,6 +14,7 @@ class _CarteiraPageState extends State<CarteiraPage> {
   bool _isLoading = true;
   bool _isWithdrawing = false;
   Map<String, dynamic>? _balanceData;
+  Map<String, dynamic>? _pendingEarnings;
   List<dynamic> _withdrawHistory = [];
   String _error = '';
 
@@ -33,10 +34,12 @@ class _CarteiraPageState extends State<CarteiraPage> {
       final results = await Future.wait([
         getDriverBalance(),
         getWithdrawHistory(),
+        getPendingEarnings(),
       ]);
 
       if (mounted) {
         final balanceResponse = results[0] as Map<String, dynamic>?;
+        final pendingEarningsResponse = results[2] as Map<String, dynamic>?;
 
         setState(() {
           // getDriverBalance() já retorna o 'data' diretamente, não o wrapper
@@ -58,6 +61,7 @@ class _CarteiraPageState extends State<CarteiraPage> {
             };
           }
           _withdrawHistory = results[1] as List<dynamic>;
+          _pendingEarnings = pendingEarningsResponse;
           _isLoading = false;
         });
       }
@@ -411,6 +415,10 @@ class _CarteiraPageState extends State<CarteiraPage> {
                               _buildSaldoCard(),
                               const SizedBox(height: 12),
 
+                              // Card Saldo a Liberar
+                              _buildPendingEarningsCard(),
+                              const SizedBox(height: 12),
+
                               // Card Crédito Emergencial
                               _buildCreditoEmergencialCard(),
                               const SizedBox(height: 24),
@@ -493,6 +501,238 @@ class _CarteiraPageState extends State<CarteiraPage> {
               color: Colors.white,
               fontSize: 32,
               fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPendingEarningsCard() {
+    final double totalPending = double.tryParse(_pendingEarnings?['totalPending']?.toString() ?? '0') ?? 0;
+    final int totalDeliveries = _pendingEarnings?['totalDeliveries'] ?? 0;
+    final List<dynamic> byCompany = _pendingEarnings?['byCompany'] ?? [];
+    final String message = _pendingEarnings?['message'] ?? '';
+
+    // Se não houver ganhos pendentes significativos, não mostrar o card
+    if (totalPending <= 1) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.schedule,
+                    color: Colors.orange,
+                    size: 24,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Saldo a Liberar',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'R\$ ${totalPending.toStringAsFixed(2).replaceAll('.', ',')}',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$totalDeliveries entrega${totalDeliveries != 1 ? 's' : ''}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.orange,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (message.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.orange, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      message,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (byCompany.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text(
+              'Por empresa:',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...byCompany.take(3).map((company) => _buildCompanyPendingItem(company)),
+            if (byCompany.length > 3)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  '+ ${byCompany.length - 3} empresa(s)',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey[600],
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompanyPendingItem(dynamic company) {
+    final String companyName = company['companyName'] ?? 'Empresa';
+    final double total = (company['total'] ?? 0).toDouble();
+    final int count = company['count'] ?? 0;
+    final String paymentType = company['paymentType'] ?? '';
+    final String estimatedReleaseDate = company['estimatedReleaseDate'] ?? '';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  companyName,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    if (paymentType.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: paymentType == 'BOLETO' ? Colors.blue.withOpacity(0.1) : Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          paymentType,
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            color: paymentType == 'BOLETO' ? Colors.blue : Colors.green,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    Text(
+                      '$count entrega${count != 1 ? 's' : ''}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+                if (estimatedReleaseDate.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    estimatedReleaseDate,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey[500],
+                      fontStyle: FontStyle.italic,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Text(
+            'R\$ ${total.toStringAsFixed(2).replaceAll('.', ',')}',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.orange,
             ),
           ),
         ],

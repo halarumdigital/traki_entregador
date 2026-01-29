@@ -6556,6 +6556,59 @@ Future<List<dynamic>> getWithdrawHistory() async {
   }
 }
 
+/// Busca os ganhos pendentes de liberação do motorista
+Future<Map<String, dynamic>?> getPendingEarnings() async {
+  try {
+    debugPrint('⏳ Buscando ganhos pendentes...');
+
+    final token = await LocalStorageService.getAccessToken();
+    if (token == null) {
+      debugPrint('❌ Token não encontrado');
+      return null;
+    }
+
+    // Tenta pegar o driverId de userDetails primeiro, depois do LocalStorageService
+    String? driverId = userDetails['id']?.toString();
+    if (driverId == null || driverId.isEmpty || driverId == 'null') {
+      driverId = await LocalStorageService.getDriverId();
+    }
+
+    debugPrint('⏳ driverId: $driverId');
+
+    if (driverId == null || driverId.isEmpty) {
+      debugPrint('❌ Driver ID não encontrado');
+      return null;
+    }
+
+    var response = await http.get(
+      Uri.parse('${url}api/v1/driver/wallet/pending-earnings'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'driver-id': driverId,
+      },
+    );
+
+    debugPrint('📥 Status Code: ${response.statusCode}');
+    debugPrint('📥 Response: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      debugPrint('✅ Ganhos pendentes carregados com sucesso');
+      return data['data'];
+    } else if (response.statusCode == 401) {
+      debugPrint('❌ Token expirado');
+      return null;
+    } else {
+      debugPrint('❌ Erro ao buscar ganhos pendentes: ${response.statusCode}');
+      return null;
+    }
+  } catch (e) {
+    debugPrint('❌ Erro ao buscar ganhos pendentes: $e');
+    return null;
+  }
+}
+
 /// Realiza uma solicitação de saque (novo endpoint)
 Future<Map<String, dynamic>> requestDriverWithdraw(double amount) async {
   try {
